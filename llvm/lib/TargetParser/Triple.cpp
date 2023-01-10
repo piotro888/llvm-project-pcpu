@@ -55,6 +55,7 @@ StringRef Triple::getArchTypeName(ArchType Kind) {
   case msp430:         return "msp430";
   case nvptx64:        return "nvptx64";
   case nvptx:          return "nvptx";
+  case pcpu:           return "pcpu";
   case ppc64:          return "powerpc64";
   case ppc64le:        return "powerpc64le";
   case ppc:            return "powerpc";
@@ -159,6 +160,7 @@ StringRef Triple::getArchTypePrefix(ArchType Kind) {
 
   case kalimba:     return "kalimba";
   case lanai:       return "lanai";
+  case pcpu:        return "pcpu";
   case shave:       return "shave";
   case wasm32:
   case wasm64:      return "wasm";
@@ -367,6 +369,7 @@ Triple::ArchType Triple::getArchTypeForLLVMName(StringRef Name) {
     .Case("spirv64", spirv64)
     .Case("kalimba", kalimba)
     .Case("lanai", lanai)
+    .Case("pcpu", pcpu)
     .Case("shave", shave)
     .Case("wasm32", wasm32)
     .Case("wasm64", wasm64)
@@ -509,6 +512,7 @@ static Triple::ArchType parseArch(StringRef ArchName) {
            "spirv64v1.3", "spirv64v1.4", "spirv64v1.5", Triple::spirv64)
     .StartsWith("kalimba", Triple::kalimba)
     .Case("lanai", Triple::lanai)
+    .Case("pcpu", Triple::pcpu)
     .Case("renderscript32", Triple::renderscript32)
     .Case("renderscript64", Triple::renderscript64)
     .Case("shave", Triple::shave)
@@ -836,6 +840,7 @@ static Triple::ObjectFormatType getDefaultFormat(const Triple &T) {
   case Triple::msp430:
   case Triple::nvptx64:
   case Triple::nvptx:
+  case Triple::pcpu:
   case Triple::ppc64le:
   case Triple::ppcle:
   case Triple::r600:
@@ -1418,6 +1423,7 @@ static unsigned getArchPointerBitWidth(llvm::Triple::ArchType Arch) {
   case llvm::Triple::mips:
   case llvm::Triple::mipsel:
   case llvm::Triple::nvptx:
+  case llvm::Triple::pcpu: // PCPUTEMPO!
   case llvm::Triple::ppc:
   case llvm::Triple::ppcle:
   case llvm::Triple::r600:
@@ -1503,6 +1509,7 @@ Triple Triple::get32BitArchVariant() const {
   case Triple::hsail:
   case Triple::kalimba:
   case Triple::lanai:
+  case Triple::pcpu: //PCPUTEMPO
   case Triple::le32:
   case Triple::loongarch32:
   case Triple::m68k:
@@ -1569,6 +1576,7 @@ Triple Triple::get64BitArchVariant() const {
   case Triple::hexagon:
   case Triple::kalimba:
   case Triple::lanai:
+  case Triple::pcpu: //PCPUTEMPO
   case Triple::m68k:
   case Triple::msp430:
   case Triple::r600:
@@ -1713,6 +1721,7 @@ Triple Triple::getLittleEndianArchVariant() const {
   switch (getArch()) {
   case Triple::UnknownArch:
   case Triple::lanai:
+  case Triple::pcpu: //PCPUTEMPO
   case Triple::sparcv9:
   case Triple::systemz:
   case Triple::m68k:

@@ -30,6 +30,7 @@
 #include "Targets/Mips.h"
 #include "Targets/NVPTX.h"
 #include "Targets/OSTargets.h"
+#include "Targets/PCPU.h"
 #include "Targets/PNaCl.h"
 #include "Targets/PPC.h"
 #include "Targets/RISCV.h"
@@ -130,6 +131,9 @@ TargetInfo *AllocateTarget(const llvm::Triple &Triple,
 
   case llvm::Triple::lanai:
     return new LanaiTargetInfo(Triple, Opts);
+  
+  case llvm::Triple::pcpu:
+    return new PCPUTargetInfo(Triple, Opts);
 
   case llvm::Triple::aarch64_32:
     if (Triple.isOSDarwin())

@@ -89,6 +89,7 @@ add_clang_library(clangBasic
   Targets/Mips.cpp
   Targets/NVPTX.cpp
   Targets/OSTargets.cpp
+  Targets/PCPU.cpp
   Targets/PNaCl.cpp
   Targets/PPC.cpp
   Targets/RISCV.cpp
