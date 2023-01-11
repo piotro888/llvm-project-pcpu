@@ -88,19 +88,6 @@ public:
 } // end anonymous namespace
 
 static PCPU::Fixups FixupKind(const MCExpr *Expr) {
-  if (isa<MCSymbolRefExpr>(Expr))
-    return PCPU::FIXUP_PCPU_21;
-  if (const PCPUMCExpr *McExpr = dyn_cast<PCPUMCExpr>(Expr)) {
-    PCPUMCExpr::VariantKind ExprKind = McExpr->getKind();
-    switch (ExprKind) {
-    case PCPUMCExpr::VK_PCPU_None:
-      return PCPU::FIXUP_PCPU_21;
-    case PCPUMCExpr::VK_PCPU_ABS_HI:
-      return PCPU::FIXUP_PCPU_HI16;
-    case PCPUMCExpr::VK_PCPU_ABS_LO:
-      return PCPU::FIXUP_PCPU_LO16;
-    }
-  }
   return PCPU::Fixups(0);
 }
 
@@ -291,9 +278,6 @@ unsigned PCPUMCCodeEmitter::getBranchTargetOpValue(
   const MCOperand &MCOp = Inst.getOperand(OpNo);
   if (MCOp.isReg() || MCOp.isImm())
     return getMachineOpValue(Inst, MCOp, Fixups, SubtargetInfo);
-
-  Fixups.push_back(MCFixup::create(
-      0, MCOp.getExpr(), static_cast<MCFixupKind>(PCPU::FIXUP_PCPU_25)));
 
   return 0;
 }

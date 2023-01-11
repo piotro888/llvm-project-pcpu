@@ -44,8 +44,6 @@ public:
   bool shouldBuildLookupTables() const { return false; }
 
   TargetTransformInfo::PopcntSupportKind getPopcntSupport(unsigned TyWidth) {
-    if (TyWidth == 32)
-      return TTI::PSK_FastHardware;
     return TTI::PSK_Software;
   }
 
@@ -64,17 +62,9 @@ public:
 
     if (Imm == 0)
       return TTI::TCC_Free;
-    if (isInt<16>(Imm.getSExtValue()))
-      return TTI::TCC_Basic;
-    if (isInt<21>(Imm.getZExtValue()))
-      return TTI::TCC_Basic;
-    if (isInt<32>(Imm.getSExtValue())) {
-      if ((Imm.getSExtValue() & 0xFFFF) == 0)
-        return TTI::TCC_Basic;
-      return 2 * TTI::TCC_Basic;
-    }
 
-    return 4 * TTI::TCC_Basic;
+    // check
+    return TTI::TCC_Basic;
   }
 
   InstructionCost getIntImmCostInst(unsigned Opc, unsigned Idx,
@@ -106,12 +96,7 @@ public:
     case ISD::SDIV:
     case ISD::UDIV:
     case ISD::UREM:
-      // This increases the cost associated with multiplication and division
-      // to 64 times what the baseline arithmetic cost is. The arithmetic
-      // instruction cost was arbitrarily chosen to reduce the desirability
-      // of emitting arithmetic instructions that are emulated in software.
-      // TODO: Investigate the performance impact given specialized lowerings.
-      return 64 * BaseT::getArithmeticInstrCost(Opcode, Ty, CostKind, Op1Info,
+      return 16 * BaseT::getArithmeticInstrCost(Opcode, Ty, CostKind, Op1Info,
                                                 Op2Info);
     }
   }

@@ -44,72 +44,20 @@ static inline unsigned getPCPURegisterNumbering(unsigned Reg) {
   case PCPU::R1:
     return 1;
   case PCPU::R2:
-  case PCPU::PC:
     return 2;
   case PCPU::R3:
     return 3;
   case PCPU::R4:
-  case PCPU::SP:
     return 4;
-  case PCPU::R5:
   case PCPU::FP:
+  case PCPU::R5:
     return 5;
+  case PCPU::RCA:
   case PCPU::R6:
     return 6;
+  case PCPU::SP:
   case PCPU::R7:
     return 7;
-  case PCPU::R8:
-  case PCPU::RV:
-    return 8;
-  case PCPU::R9:
-    return 9;
-  case PCPU::R10:
-  case PCPU::RR1:
-    return 10;
-  case PCPU::R11:
-  case PCPU::RR2:
-    return 11;
-  case PCPU::R12:
-    return 12;
-  case PCPU::R13:
-    return 13;
-  case PCPU::R14:
-    return 14;
-  case PCPU::R15:
-  case PCPU::RCA:
-    return 15;
-  case PCPU::R16:
-    return 16;
-  case PCPU::R17:
-    return 17;
-  case PCPU::R18:
-    return 18;
-  case PCPU::R19:
-    return 19;
-  case PCPU::R20:
-    return 20;
-  case PCPU::R21:
-    return 21;
-  case PCPU::R22:
-    return 22;
-  case PCPU::R23:
-    return 23;
-  case PCPU::R24:
-    return 24;
-  case PCPU::R25:
-    return 25;
-  case PCPU::R26:
-    return 26;
-  case PCPU::R27:
-    return 27;
-  case PCPU::R28:
-    return 28;
-  case PCPU::R29:
-    return 29;
-  case PCPU::R30:
-    return 30;
-  case PCPU::R31:
-    return 31;
   default:
     llvm_unreachable("Unknown register number!");
   }

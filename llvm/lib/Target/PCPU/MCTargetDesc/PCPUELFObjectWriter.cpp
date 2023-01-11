@@ -43,25 +43,6 @@ unsigned PCPUELFObjectWriter::getRelocType(MCContext & /*Ctx*/,
   unsigned Type;
   unsigned Kind = static_cast<unsigned>(Fixup.getKind());
   switch (Kind) {
-  case PCPU::FIXUP_PCPU_21:
-    Type = ELF::R_PCPU_21;
-    break;
-  case PCPU::FIXUP_PCPU_21_F:
-    Type = ELF::R_PCPU_21_F;
-    break;
-  case PCPU::FIXUP_PCPU_25:
-    Type = ELF::R_PCPU_25;
-    break;
-  case PCPU::FIXUP_PCPU_32:
-  case FK_Data_4:
-    Type = ELF::R_PCPU_32;
-    break;
-  case PCPU::FIXUP_PCPU_HI16:
-    Type = ELF::R_PCPU_HI16;
-    break;
-  case PCPU::FIXUP_PCPU_LO16:
-    Type = ELF::R_PCPU_LO16;
-    break;
   case PCPU::FIXUP_PCPU_NONE:
     Type = ELF::R_PCPU_NONE;
     break;
@@ -75,12 +56,6 @@ unsigned PCPUELFObjectWriter::getRelocType(MCContext & /*Ctx*/,
 bool PCPUELFObjectWriter::needsRelocateWithSymbol(const MCSymbol & /*SD*/,
                                                    unsigned Type) const {
   switch (Type) {
-  case ELF::R_PCPU_21:
-  case ELF::R_PCPU_21_F:
-  case ELF::R_PCPU_25:
-  case ELF::R_PCPU_32:
-  case ELF::R_PCPU_HI16:
-    return true;
   default:
     return false;
   }

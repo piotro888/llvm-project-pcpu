@@ -25,20 +25,6 @@ class PassRegistry;
 // PCPU-specific DAG, ready for instruction scheduling.
 FunctionPass *createPCPUISelDag(PCPUTargetMachine &TM);
 
-// createPCPUDelaySlotFillerPass - This pass fills delay slots
-// with useful instructions or nop's
-FunctionPass *createPCPUDelaySlotFillerPass(const PCPUTargetMachine &TM);
-
-// createPCPUMemAluCombinerPass - This pass combines loads/stores and
-// arithmetic operations.
-FunctionPass *createPCPUMemAluCombinerPass();
-
-// createPCPUSetflagAluCombinerPass - This pass combines SET_FLAG and ALU
-// operations.
-FunctionPass *createPCPUSetflagAluCombinerPass();
-
-void initializePCPUDAGToDAGISelPass(PassRegistry &);
-
 } // namespace llvm
 
 #endif // LLVM_LIB_TARGET_PCPU_PCPU_H

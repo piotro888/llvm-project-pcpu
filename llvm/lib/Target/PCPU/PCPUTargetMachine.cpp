@@ -36,13 +36,11 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializePCPUTarget() {
   // Register the target.
   RegisterTargetMachine<PCPUTargetMachine> registered_target(
       getThePCPUTarget());
-  PassRegistry &PR = *PassRegistry::getPassRegistry();
-  initializePCPUDAGToDAGISelPass(PR);
 }
 
 static std::string computeDataLayout() {
   // Data layout (keep in sync with clang/lib/Basic/Targets.cpp)
-  return "E"        // Big endian
+  return "e"        // Little endian
          "-m:e"     // ELF name manging
          "-p:32:32" // 32-bit pointers, 32 bit aligned
          "-i64:64"  // 64 bit integers, 64 bit aligned
@@ -52,7 +50,7 @@ static std::string computeDataLayout() {
 }
 
 static Reloc::Model getEffectiveRelocModel(std::optional<Reloc::Model> RM) {
-  return RM.value_or(Reloc::PIC_);
+  return RM.value_or(Reloc::Static);
 }
 
 PCPUTargetMachine::PCPUTargetMachine(
@@ -94,7 +92,6 @@ public:
   }
 
   bool addInstSelector() override;
-  void addPreSched2() override;
   void addPreEmitPass() override;
 };
 } // namespace
@@ -113,11 +110,4 @@ bool PCPUPassConfig::addInstSelector() {
 // Implemented by targets that want to run passes immediately before
 // machine code is emitted.
 void PCPUPassConfig::addPreEmitPass() {
-  addPass(createPCPUDelaySlotFillerPass(getPCPUTargetMachine()));
-}
-
-// Run passes after prolog-epilog insertion and before the second instruction
-// scheduling pass.
-void PCPUPassConfig::addPreSched2() {
-  addPass(createPCPUMemAluCombinerPass());
 }

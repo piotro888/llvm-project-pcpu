@@ -21,10 +21,6 @@ class BitVector;
 class PCPUSubtarget;
 
 class PCPUFrameLowering : public TargetFrameLowering {
-private:
-  void determineFrameLayout(MachineFunction &MF) const;
-  void replaceAdjDynAllocPseudo(MachineFunction &MF) const;
-
 protected:
   const PCPUSubtarget &STI;
 
@@ -44,7 +40,7 @@ public:
   eliminateCallFramePseudoInstr(MachineFunction &MF, MachineBasicBlock &MBB,
                                 MachineBasicBlock::iterator I) const override;
 
-  bool hasFP(const MachineFunction & /*MF*/) const override { return true; }
+  bool hasFP(const MachineFunction & /*MF*/) const override;
 
   void determineCalleeSaves(MachineFunction &MF, BitVector &SavedRegs,
                             RegScavenger *RS = nullptr) const override;

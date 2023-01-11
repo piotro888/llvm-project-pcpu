@@ -22,42 +22,23 @@ let Namespace = "PCPU" in {
 }
 
 // Integer registers
-foreach i = 0-31 in {
+foreach i = 0-7 in {
   def R#i : PCPUReg<i, "r"#i>, DwarfRegNum<[i]>;
 }
 
 // Register aliases
 let SubRegIndices = [sub_32] in {
-  def PC  : PCPUReg< 2,  "pc",  [R2]>,  DwarfRegAlias<R2>;
-  def SP  : PCPUReg< 4,  "sp",  [R4]>,  DwarfRegAlias<R4>;
   def FP  : PCPUReg< 5,  "fp",  [R5]>,  DwarfRegAlias<R5>;
-  def RV  : PCPUReg< 8,  "rv",  [R8]>,  DwarfRegAlias<R8>;
-  def RR1 : PCPUReg<10, "rr1", [R10]>, DwarfRegAlias<R10>;
-  def RR2 : PCPUReg<11, "rr2", [R11]>, DwarfRegAlias<R11>;
-  def RCA : PCPUReg<15, "rca", [R15]>, DwarfRegAlias<R15>;
+  def RCA  : PCPUReg< 6,  "rv",  [R6]>,  DwarfRegAlias<R6>;
+  def SP  : PCPUReg< 7,  "sp",  [R7]>,  DwarfRegAlias<R7>;
 }
 
-// Define a status register to capture the dependencies between the set flag
-// and setcc instructions
-def SR : PCPUReg< 0, "sw">;
-
+// The order of registers represents the preferred allocation sequence.
 // Register classes.
 def GPR : RegisterClass<"PCPU", [i32], 32,
-    (add R3, R9, R12, R13, R14, R16, R17,
-     (sequence "R%i", 20, 31),
-     R6, R7, R18, R19, // registers for passing arguments
-     R15, RCA, // register for constant addresses
-     R10, RR1, R11, RR2, // programmer controlled registers
-     R8,  RV,  // return value
-     R5,  FP,  // frame pointer
-     R4,  SP,  // stack pointer
-     R2,  PC,  // program counter
-     R1,       // all 1s (0xffffffff)
-     R0        // constant 0
+    (add
+     R7,  FP,  // frame pointer
+     R5,  SP,  // stack pointer
+     R1, R2, R3, R0, R4,  // GPR 
+     R6,  RCA  // return value
     )>;
-
-// Condition code register class
-def CCR : RegisterClass<"PCPU", [i32], 32, (add SR)> {
-  let CopyCost = -1; // Don't allow copying of status registers
-  let isAllocatable = 0;
-}

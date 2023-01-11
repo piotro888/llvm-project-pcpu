@@ -108,30 +108,6 @@ bool PCPUInstPrinter::printMemoryStoreIncrement(const MCInst *MI,
 
 bool PCPUInstPrinter::printAlias(const MCInst *MI, raw_ostream &OS) {
   switch (MI->getOpcode()) {
-  case PCPU::LDW_RI:
-    // ld 4[*%rN], %rX => ld [++imm], %rX
-    // ld -4[*%rN], %rX => ld [--imm], %rX
-    // ld 4[%rN*], %rX => ld [imm++], %rX
-    // ld -4[%rN*], %rX => ld [imm--], %rX
-    return printMemoryLoadIncrement(MI, OS, "ld", 4);
-  case PCPU::LDHs_RI:
-    return printMemoryLoadIncrement(MI, OS, "ld.h", 2);
-  case PCPU::LDHz_RI:
-    return printMemoryLoadIncrement(MI, OS, "uld.h", 2);
-  case PCPU::LDBs_RI:
-    return printMemoryLoadIncrement(MI, OS, "ld.b", 1);
-  case PCPU::LDBz_RI:
-    return printMemoryLoadIncrement(MI, OS, "uld.b", 1);
-  case PCPU::SW_RI:
-    // st %rX, 4[*%rN] => st %rX, [++imm]
-    // st %rX, -4[*%rN] => st %rX, [--imm]
-    // st %rX, 4[%rN*] => st %rX, [imm++]
-    // st %rX, -4[%rN*] => st %rX, [imm--]
-    return printMemoryStoreIncrement(MI, OS, "st", 4);
-  case PCPU::STH_RI:
-    return printMemoryStoreIncrement(MI, OS, "st.h", 2);
-  case PCPU::STB_RI:
-    return printMemoryStoreIncrement(MI, OS, "st.b", 1);
   default:
     return false;
   }

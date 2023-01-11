@@ -47,7 +47,7 @@ static MCInstrInfo *createPCPUMCInstrInfo() {
 
 static MCRegisterInfo *createPCPUMCRegisterInfo(const Triple & /*TT*/) {
   MCRegisterInfo *X = new MCRegisterInfo();
-  InitPCPUMCRegisterInfo(X, PCPU::RCA, 0, 0, PCPU::PC);
+  InitPCPUMCRegisterInfo(X, PCPU::RCA);
   return X;
 }
 

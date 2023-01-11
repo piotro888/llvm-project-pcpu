@@ -28,8 +28,7 @@ PCPUMCAsmInfo::PCPUMCAsmInfo(const Triple & /*TheTriple*/,
   // PCPU assembly requires ".section" before ".bss"
   UsesELFSectionDirectiveForBSS = true;
 
-  // Use '!' as comment string to correspond with old toolchain.
-  CommentString = "!";
+  CommentString = ";";
 
   // Target supports emission of debugging information.
   SupportsDebugInformation = true;

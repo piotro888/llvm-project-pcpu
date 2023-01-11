@@ -25,13 +25,6 @@ enum Fixups {
   // Results in R_PCPU_NONE
   FIXUP_PCPU_NONE = FirstTargetFixupKind,
 
-  FIXUP_PCPU_21,   // 21-bit symbol relocation
-  FIXUP_PCPU_21_F, // 21-bit symbol relocation, last two bits masked to 0
-  FIXUP_PCPU_25,   // 25-bit branch targets
-  FIXUP_PCPU_32,   // general 32-bit relocation
-  FIXUP_PCPU_HI16, // upper 16-bits of a symbolic relocation
-  FIXUP_PCPU_LO16, // lower 16-bits of a symbolic relocation
-
   // Marker
   LastTargetFixupKind,
   NumTargetFixupKinds = LastTargetFixupKind - FirstTargetFixupKind

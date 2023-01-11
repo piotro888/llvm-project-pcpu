@@ -28,13 +28,6 @@ static unsigned adjustFixupValue(unsigned Kind, uint64_t Value) {
   case FK_Data_4:
   case FK_Data_8:
     return Value;
-  case PCPU::FIXUP_PCPU_21:
-  case PCPU::FIXUP_PCPU_21_F:
-  case PCPU::FIXUP_PCPU_25:
-  case PCPU::FIXUP_PCPU_32:
-  case PCPU::FIXUP_PCPU_HI16:
-  case PCPU::FIXUP_PCPU_LO16:
-    return Value;
   default:
     llvm_unreachable("Unknown fixup kind!");
   }
@@ -140,13 +133,8 @@ PCPUAsmBackend::getFixupKindInfo(MCFixupKind Kind) const {
       //   no bits are set in the fixup range.
       //
       // name          offset bits flags
-      {"FIXUP_PCPU_NONE", 0, 32, 0},
-      {"FIXUP_PCPU_21", 16, 16 /*21*/, 0},
-      {"FIXUP_PCPU_21_F", 16, 16 /*21*/, 0},
-      {"FIXUP_PCPU_25", 7, 25, 0},
-      {"FIXUP_PCPU_32", 0, 32, 0},
-      {"FIXUP_PCPU_HI16", 16, 16, 0},
-      {"FIXUP_PCPU_LO16", 16, 16, 0}};
+      {"FIXUP_PCPU_NONE", 0, 32, 0}
+  };    
 
   if (Kind < FirstTargetFixupKind)
     return MCAsmBackend::getFixupKindInfo(Kind);

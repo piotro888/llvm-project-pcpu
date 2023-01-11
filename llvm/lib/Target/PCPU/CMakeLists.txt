@@ -16,14 +16,12 @@ add_public_tablegen_target(PCPUCommonTableGen)
 
 add_llvm_target(PCPUCodeGen
   PCPUAsmPrinter.cpp
-  PCPUDelaySlotFiller.cpp
   PCPUFrameLowering.cpp
   PCPUInstrInfo.cpp
   PCPUISelDAGToDAG.cpp
   PCPUISelLowering.cpp
   PCPUMachineFunctionInfo.cpp
   PCPUMCInstLower.cpp
-  PCPUMemAluCombiner.cpp
   PCPURegisterInfo.cpp
   PCPUSelectionDAGInfo.cpp
   PCPUSubtarget.cpp
@@ -35,7 +33,6 @@ add_llvm_target(PCPUCodeGen
   AsmPrinter
   CodeGen
   Core
-  PCPUAsmParser
   PCPUDesc
   PCPUInfo
   MC
@@ -49,7 +46,5 @@ add_llvm_target(PCPUCodeGen
   PCPU
 )
 
-add_subdirectory(AsmParser)
-add_subdirectory(Disassembler)
 add_subdirectory(MCTargetDesc)
 add_subdirectory(TargetInfo)

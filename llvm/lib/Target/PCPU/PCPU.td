@@ -28,7 +28,6 @@ def PCPUInstrInfo : InstrInfo;
 //===----------------------------------------------------------------------===//
 
 def : ProcessorModel<"generic", PCPUSchedModel, []>;
-def : ProcessorModel<"v11", PCPUSchedModel, []>;
 
 def PCPUInstPrinter : AsmWriter {
   string AsmWriterClassName  = "InstPrinter";

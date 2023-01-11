@@ -24,32 +24,12 @@ namespace llvm {
 class PCPUMachineFunctionInfo : public MachineFunctionInfo {
   virtual void anchor();
 
-  // SRetReturnReg - PCPU ABI require that sret lowering includes
-  // returning the value of the returned struct in a register. This field
-  // holds the virtual register into which the sret argument is passed.
-  Register SRetReturnReg;
-
-  // GlobalBaseReg - keeps track of the virtual register initialized for
-  // use as the global base register. This is used for PIC in some PIC
-  // relocation models.
-  Register GlobalBaseReg;
-
-  // VarArgsFrameIndex - FrameIndex for start of varargs area.
-  int VarArgsFrameIndex;
-
 public:
-  PCPUMachineFunctionInfo(const Function &F, const TargetSubtargetInfo *STI)
-      : VarArgsFrameIndex(0) {}
+  PCPUMachineFunctionInfo(const Function &F, const TargetSubtargetInfo *STI) {}
   MachineFunctionInfo *
   clone(BumpPtrAllocator &Allocator, MachineFunction &DestMF,
         const DenseMap<MachineBasicBlock *, MachineBasicBlock *> &Src2DstMBB)
       const override;
-
-  Register getSRetReturnReg() const { return SRetReturnReg; }
-  void setSRetReturnReg(Register Reg) { SRetReturnReg = Reg; }
-
-  int getVarArgsFrameIndex() const { return VarArgsFrameIndex; }
-  void setVarArgsFrameIndex(int Index) { VarArgsFrameIndex = Index; }
 };
 
 } // namespace llvm
