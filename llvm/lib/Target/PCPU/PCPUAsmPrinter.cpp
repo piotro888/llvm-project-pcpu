@@ -147,43 +147,45 @@ bool PCPUAsmPrinter::PrintAsmOperand(const MachineInstr *MI, unsigned OpNo,
 
 //===----------------------------------------------------------------------===//
 void PCPUAsmPrinter::emitCallInstruction(const MachineInstr *MI) {
-  assert((MI->getOpcode() == PCPU::CALL || MI->getOpcode() == PCPU::CALLR) &&
-         "Unsupported call function");
+  // assert((MI->getOpcode() == PCPU::CALL || MI->getOpcode() == PCPU::CALLR) &&
+  //        "Unsupported call function");
 
   PCPUMCInstLower MCInstLowering(OutContext, *this);
   MCSubtargetInfo STI = getSubtargetInfo();
-  // Insert save rca instruction immediately before the call.
-  // TODO: We should generate a pc-relative mov instruction here instead
-  // of pc + 16 (should be mov .+16 %rca).
-  OutStreamer->emitInstruction(MCInstBuilder(PCPU::ADD_I_LO)
-                                   .addReg(PCPU::RCA)
-                                   .addReg(PCPU::PC)
-                                   .addImm(16),
-                               STI);
+  // FIXME: emit call
 
-  // Push rca onto the stack.
-  //   st %rca, [--%sp]
-  OutStreamer->emitInstruction(MCInstBuilder(PCPU::SW_RI)
-                                   .addReg(PCPU::RCA)
-                                   .addReg(PCPU::SP)
-                                   .addImm(-4)
-                                   .addImm(LPAC::makePreOp(LPAC::ADD)),
-                               STI);
+  // // Insert save rca instruction immediately before the call.
+  // // TODO: We should generate a pc-relative mov instruction here instead
+  // // of pc + 16 (should be mov .+16 %rca).
+  // OutStreamer->emitInstruction(MCInstBuilder(PCPU::ADD_I_LO)
+  //                                  .addReg(PCPU::RCA)
+  //                                  .addReg(PCPU::PC)
+  //                                  .addImm(16),
+  //                              STI);
 
-  // Lower the call instruction.
-  if (MI->getOpcode() == PCPU::CALL) {
-    MCInst TmpInst;
-    MCInstLowering.Lower(MI, TmpInst);
-    TmpInst.setOpcode(PCPU::BT);
-    OutStreamer->emitInstruction(TmpInst, STI);
-  } else {
-    OutStreamer->emitInstruction(MCInstBuilder(PCPU::ADD_R)
-                                     .addReg(PCPU::PC)
-                                     .addReg(MI->getOperand(0).getReg())
-                                     .addReg(PCPU::R0)
-                                     .addImm(LPCC::ICC_T),
-                                 STI);
-  }
+  // // Push rca onto the stack.
+  // //   st %rca, [--%sp]
+  // OutStreamer->emitInstruction(MCInstBuilder(PCPU::SW_RI)
+  //                                  .addReg(PCPU::RCA)
+  //                                  .addReg(PCPU::SP)
+  //                                  .addImm(-4)
+  //                                  .addImm(LPAC::makePreOp(LPAC::ADD)),
+  //                              STI);
+
+  // // Lower the call instruction.
+  // if (MI->getOpcode() == PCPU::CALL) {
+  //   MCInst TmpInst;
+  //   MCInstLowering.Lower(MI, TmpInst);
+  //   TmpInst.setOpcode(PCPU::BT);
+  //   OutStreamer->emitInstruction(TmpInst, STI);
+  // } else {
+  //   OutStreamer->emitInstruction(MCInstBuilder(PCPU::ADD_R)
+  //                                    .addReg(PCPU::PC)
+  //                                    .addReg(MI->getOperand(0).getReg())
+  //                                    .addReg(PCPU::R0)
+  //                                    .addImm(LPCC::ICC_T),
+  //                                STI);
+  // }
 }
 
 void PCPUAsmPrinter::customEmitInstruction(const MachineInstr *MI) {

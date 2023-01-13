@@ -213,13 +213,8 @@ Register PCPUTargetLowering::getRegisterByName(
   const MachineFunction & /*MF*/) const {
   // Only unallocatable registers should be matched here.
   Register Reg = StringSwitch<unsigned>(RegName)
-                     .Case("pc", PCPU::PC)
                      .Case("sp", PCPU::SP)
                      .Case("fp", PCPU::FP)
-                     .Case("rr1", PCPU::RR1)
-                     .Case("r10", PCPU::R10)
-                     .Case("rr2", PCPU::RR2)
-                     .Case("r11", PCPU::R11)
                      .Case("rca", PCPU::RCA)
                      .Default(0);
 
@@ -361,34 +356,6 @@ void PCPUTargetLowering::LowerAsmOperandForConstraint(
 
 #include "PCPUGenCallingConv.inc"
 
-static unsigned NumFixedArgs;
-static bool CC_PCPU32_VarArg(unsigned ValNo, MVT ValVT, MVT LocVT,
-                              CCValAssign::LocInfo LocInfo,
-                              ISD::ArgFlagsTy ArgFlags, CCState &State) {
-  // Handle fixed arguments with default CC.
-  // Note: Both the default and fast CC handle VarArg the same and hence the
-  // calling convention of the function is not considered here.
-  if (ValNo < NumFixedArgs) {
-    return CC_PCPU32(ValNo, ValVT, LocVT, LocInfo, ArgFlags, State);
-  }
-
-  // Promote i8/i16 args to i32
-  if (LocVT == MVT::i8 || LocVT == MVT::i16) {
-    LocVT = MVT::i32;
-    if (ArgFlags.isSExt())
-      LocInfo = CCValAssign::SExt;
-    else if (ArgFlags.isZExt())
-      LocInfo = CCValAssign::ZExt;
-    else
-      LocInfo = CCValAssign::AExt;
-  }
-
-  // VarArgs get passed on stack
-  unsigned Offset = State.AllocateStack(4, Align(4));
-  State.addLoc(CCValAssign::getMem(ValNo, ValVT, Offset, LocVT, LocInfo));
-  return false;
-}
-
 SDValue PCPUTargetLowering::LowerFormalArguments(
     SDValue Chain, CallingConv::ID CallConv, bool IsVarArg,
     const SmallVectorImpl<ISD::InputArg> &Ins, const SDLoc &DL,
@@ -443,11 +410,8 @@ SDValue PCPUTargetLowering::LowerCCCArguments(
   SmallVector<CCValAssign, 16> ArgLocs;
   CCState CCInfo(CallConv, IsVarArg, DAG.getMachineFunction(), ArgLocs,
                  *DAG.getContext());
-  if (CallConv == CallingConv::Fast) {
-    CCInfo.AnalyzeFormalArguments(Ins, CC_PCPU32_Fast);
-  } else {
-    CCInfo.AnalyzeFormalArguments(Ins, CC_PCPU32);
-  }
+
+  CCInfo.AnalyzeFormalArguments(Ins, PCPU_CRetConv);
 
   for (unsigned i = 0, e = ArgLocs.size(); i != e; ++i) {
     CCValAssign &VA = ArgLocs[i];
@@ -532,7 +496,7 @@ bool PCPUTargetLowering::CanLowerReturn(
   SmallVector<CCValAssign, 16> RVLocs;
   CCState CCInfo(CallConv, IsVarArg, MF, RVLocs, Context);
 
-  return CCInfo.CheckReturn(Outs, RetCC_PCPU32);
+  return CCInfo.CheckReturn(Outs, PCPU_CRetConv);
 }
 
 SDValue
@@ -549,7 +513,7 @@ PCPUTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
                  *DAG.getContext());
 
   // Analize return values.
-  CCInfo.AnalyzeReturn(Outs, RetCC_PCPU32);
+  CCInfo.AnalyzeReturn(Outs, PCPU_CRetConv);
 
   SDValue Flag;
   SmallVector<SDValue, 4> RetOps(1, Chain);
@@ -579,10 +543,10 @@ PCPUTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
     SDValue Val =
         DAG.getCopyFromReg(Chain, DL, Reg, getPointerTy(DAG.getDataLayout()));
 
-    Chain = DAG.getCopyToReg(Chain, DL, PCPU::RV, Val, Flag);
+    Chain = DAG.getCopyToReg(Chain, DL, PCPU::R0, Val, Flag);
     Flag = Chain.getValue(1);
     RetOps.push_back(
-        DAG.getRegister(PCPU::RV, getPointerTy(DAG.getDataLayout())));
+        DAG.getRegister(PCPU::R0, getPointerTy(DAG.getDataLayout())));
   }
 
   RetOps[0] = Chain; // Update chain
@@ -611,20 +575,10 @@ SDValue PCPUTargetLowering::LowerCCCCallTo(
   GlobalAddressSDNode *G = dyn_cast<GlobalAddressSDNode>(Callee);
   MachineFrameInfo &MFI = DAG.getMachineFunction().getFrameInfo();
 
-  NumFixedArgs = 0;
-  if (IsVarArg && G) {
-    const Function *CalleeFn = dyn_cast<Function>(G->getGlobal());
-    if (CalleeFn)
-      NumFixedArgs = CalleeFn->getFunctionType()->getNumParams();
-  }
-  if (NumFixedArgs)
-    CCInfo.AnalyzeCallOperands(Outs, CC_PCPU32_VarArg);
-  else {
-    if (CallConv == CallingConv::Fast)
-      CCInfo.AnalyzeCallOperands(Outs, CC_PCPU32_Fast);
-    else
-      CCInfo.AnalyzeCallOperands(Outs, CC_PCPU32);
-  }
+  if (IsVarArg)
+    CCInfo.AnalyzeCallOperands(Outs, PCPU_CCallingConv_VaArg);
+  else
+    CCInfo.AnalyzeCallOperands(Outs, PCPU_CCallingConv);
 
   // Get a count of how many bytes are to be pushed on the stack.
   unsigned NumBytes = CCInfo.getNextStackOffset();
@@ -781,7 +735,7 @@ SDValue PCPUTargetLowering::LowerCallResult(
   CCState CCInfo(CallConv, IsVarArg, DAG.getMachineFunction(), RVLocs,
                  *DAG.getContext());
 
-  CCInfo.AnalyzeCallResult(Ins, RetCC_PCPU32);
+  CCInfo.AnalyzeCallResult(Ins, PCPU_CCallingConv);
 
   // Copy all of the result registers out of their specified physreg.
   for (unsigned I = 0; I != RVLocs.size(); ++I) {

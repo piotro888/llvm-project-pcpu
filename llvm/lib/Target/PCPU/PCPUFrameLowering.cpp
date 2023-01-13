@@ -23,62 +23,62 @@
 
 using namespace llvm;
 
-// Determines the size of the frame and maximum call frame size.
-void PCPUFrameLowering::determineFrameLayout(MachineFunction &MF) const {
-  MachineFrameInfo &MFI = MF.getFrameInfo();
-  const PCPURegisterInfo *LRI = STI.getRegisterInfo();
+// // Determines the size of the frame and maximum call frame size.
+// void PCPUFrameLowering::determineFrameLayout(MachineFunction &MF) const {
+//   MachineFrameInfo &MFI = MF.getFrameInfo();
+//   const PCPURegisterInfo *LRI = STI.getRegisterInfo();
 
-  // Get the number of bytes to allocate from the FrameInfo.
-  unsigned FrameSize = MFI.getStackSize();
+//   // Get the number of bytes to allocate from the FrameInfo.
+//   unsigned FrameSize = MFI.getStackSize();
 
-  // Get the alignment.
-  Align StackAlign =
-      LRI->hasStackRealignment(MF) ? MFI.getMaxAlign() : getStackAlign();
+//   // Get the alignment.
+//   Align StackAlign =
+//       LRI->hasStackRealignment(MF) ? MFI.getMaxAlign() : getStackAlign();
 
-  // Get the maximum call frame size of all the calls.
-  unsigned MaxCallFrameSize = MFI.getMaxCallFrameSize();
+//   // Get the maximum call frame size of all the calls.
+//   unsigned MaxCallFrameSize = MFI.getMaxCallFrameSize();
 
-  // If we have dynamic alloca then MaxCallFrameSize needs to be aligned so
-  // that allocations will be aligned.
-  if (MFI.hasVarSizedObjects())
-    MaxCallFrameSize = alignTo(MaxCallFrameSize, StackAlign);
+//   // If we have dynamic alloca then MaxCallFrameSize needs to be aligned so
+//   // that allocations will be aligned.
+//   if (MFI.hasVarSizedObjects())
+//     MaxCallFrameSize = alignTo(MaxCallFrameSize, StackAlign);
 
-  // Update maximum call frame size.
-  MFI.setMaxCallFrameSize(MaxCallFrameSize);
+//   // Update maximum call frame size.
+//   MFI.setMaxCallFrameSize(MaxCallFrameSize);
 
-  // Include call frame size in total.
-  if (!(hasReservedCallFrame(MF) && MFI.adjustsStack()))
-    FrameSize += MaxCallFrameSize;
+//   // Include call frame size in total.
+//   if (!(hasReservedCallFrame(MF) && MFI.adjustsStack()))
+//     FrameSize += MaxCallFrameSize;
 
-  // Make sure the frame is aligned.
-  FrameSize = alignTo(FrameSize, StackAlign);
+//   // Make sure the frame is aligned.
+//   FrameSize = alignTo(FrameSize, StackAlign);
 
-  // Update frame info.
-  MFI.setStackSize(FrameSize);
-}
+//   // Update frame info.
+//   MFI.setStackSize(FrameSize);
+// }
 
 // Iterates through each basic block in a machine function and replaces
 // ADJDYNALLOC pseudo instructions with a PCPU:ADDI with the
 // maximum call frame size as the immediate.
 void PCPUFrameLowering::replaceAdjDynAllocPseudo(MachineFunction &MF) const {
-  const PCPUInstrInfo &LII =
-      *static_cast<const PCPUInstrInfo *>(STI.getInstrInfo());
-  unsigned MaxCallFrameSize = MF.getFrameInfo().getMaxCallFrameSize();
+  // const PCPUInstrInfo &LII =
+  //     *static_cast<const PCPUInstrInfo *>(STI.getInstrInfo());
+  // unsigned MaxCallFrameSize = MF.getFrameInfo().getMaxCallFrameSize();
 
-  for (MachineBasicBlock &MBB : MF) {
-    for (MachineInstr &MI : llvm::make_early_inc_range(MBB)) {
-      if (MI.getOpcode() == PCPU::ADJDYNALLOC) {
-        DebugLoc DL = MI.getDebugLoc();
-        Register Dst = MI.getOperand(0).getReg();
-        Register Src = MI.getOperand(1).getReg();
+  // for (MachineBasicBlock &MBB : MF) {
+  //   for (MachineInstr &MI : llvm::make_early_inc_range(MBB)) {
+  //     if (MI.getOpcode() == PCPU::ADJDYNALLOC) {
+  //       DebugLoc DL = MI.getDebugLoc();
+  //       Register Dst = MI.getOperand(0).getReg();
+  //       Register Src = MI.getOperand(1).getReg();
 
-        BuildMI(MBB, MI, DL, LII.get(PCPU::ADD_I_LO), Dst)
-            .addReg(Src)
-            .addImm(MaxCallFrameSize);
-        MI.eraseFromParent();
-      }
-    }
-  }
+  //       BuildMI(MBB, MI, DL, LII.get(PCPU::ADD_I_LO), Dst)
+  //           .addReg(Src)
+  //           .addImm(MaxCallFrameSize);
+  //       MI.eraseFromParent();
+  //     }
+  //   }
+  // }
 }
 
 // Generates the following sequence for function entry:
@@ -87,52 +87,52 @@ void PCPUFrameLowering::replaceAdjDynAllocPseudo(MachineFunction &MF) const {
 //   sub %sp,0x4,%sp        !allocate stack space (as needed)
 void PCPUFrameLowering::emitPrologue(MachineFunction &MF,
                                       MachineBasicBlock &MBB) const {
-  assert(&MF.front() == &MBB && "Shrink-wrapping not yet supported");
+  // assert(&MF.front() == &MBB && "Shrink-wrapping not yet supported");
 
-  MachineFrameInfo &MFI = MF.getFrameInfo();
-  const PCPUInstrInfo &LII =
-      *static_cast<const PCPUInstrInfo *>(STI.getInstrInfo());
-  MachineBasicBlock::iterator MBBI = MBB.begin();
+  // MachineFrameInfo &MFI = MF.getFrameInfo();
+  // const PCPUInstrInfo &LII =
+  //     *static_cast<const PCPUInstrInfo *>(STI.getInstrInfo());
+  // MachineBasicBlock::iterator MBBI = MBB.begin();
 
-  // Debug location must be unknown since the first debug location is used
-  // to determine the end of the prologue.
-  DebugLoc DL;
+  // // Debug location must be unknown since the first debug location is used
+  // // to determine the end of the prologue.
+  // DebugLoc DL;
 
-  // Determine the correct frame layout
-  determineFrameLayout(MF);
+  // // Determine the correct frame layout
+  // determineFrameLayout(MF);
 
-  // FIXME: This appears to be overallocating.  Needs investigation.
-  // Get the number of bytes to allocate from the FrameInfo.
-  unsigned StackSize = MFI.getStackSize();
+  // // FIXME: This appears to be overallocating.  Needs investigation.
+  // // Get the number of bytes to allocate from the FrameInfo.
+  // unsigned StackSize = MFI.getStackSize();
 
-  // Push old FP
-  // st %fp,-4[*%sp]
-  BuildMI(MBB, MBBI, DL, LII.get(PCPU::SW_RI))
-      .addReg(PCPU::FP)
-      .addReg(PCPU::SP)
-      .addImm(-4)
-      .addImm(LPAC::makePreOp(LPAC::ADD))
-      .setMIFlag(MachineInstr::FrameSetup);
+  // // Push old FP
+  // // st %fp,-4[*%sp]
+  // BuildMI(MBB, MBBI, DL, LII.get(PCPU::SW_RI))
+  //     .addReg(PCPU::FP)
+  //     .addReg(PCPU::SP)
+  //     .addImm(-4)
+  //     .addImm(LPAC::makePreOp(LPAC::ADD))
+  //     .setMIFlag(MachineInstr::FrameSetup);
 
-  // Generate new FP
-  // add %sp,8,%fp
-  BuildMI(MBB, MBBI, DL, LII.get(PCPU::ADD_I_LO), PCPU::FP)
-      .addReg(PCPU::SP)
-      .addImm(8)
-      .setMIFlag(MachineInstr::FrameSetup);
+  // // Generate new FP
+  // // add %sp,8,%fp
+  // BuildMI(MBB, MBBI, DL, LII.get(PCPU::ADD_I_LO), PCPU::FP)
+  //     .addReg(PCPU::SP)
+  //     .addImm(8)
+  //     .setMIFlag(MachineInstr::FrameSetup);
 
-  // Allocate space on the stack if needed
-  // sub %sp,StackSize,%sp
-  if (StackSize != 0) {
-    BuildMI(MBB, MBBI, DL, LII.get(PCPU::SUB_I_LO), PCPU::SP)
-        .addReg(PCPU::SP)
-        .addImm(StackSize)
-        .setMIFlag(MachineInstr::FrameSetup);
-  }
+  // // Allocate space on the stack if needed
+  // // sub %sp,StackSize,%sp
+  // if (StackSize != 0) {
+  //   BuildMI(MBB, MBBI, DL, LII.get(PCPU::SUB_I_LO), PCPU::SP)
+  //       .addReg(PCPU::SP)
+  //       .addImm(StackSize)
+  //       .setMIFlag(MachineInstr::FrameSetup);
+  // }
 
-  // Replace ADJDYNANALLOC
-  if (MFI.hasVarSizedObjects())
-    replaceAdjDynAllocPseudo(MF);
+  // // Replace ADJDYNANALLOC
+  // if (MFI.hasVarSizedObjects())
+  //   replaceAdjDynAllocPseudo(MF);
 }
 
 MachineBasicBlock::iterator PCPUFrameLowering::eliminateCallFramePseudoInstr(
@@ -174,21 +174,21 @@ MachineBasicBlock::iterator PCPUFrameLowering::eliminateCallFramePseudoInstr(
 // instructions execute in the delay slots of the load to PC.
 void PCPUFrameLowering::emitEpilogue(MachineFunction & /*MF*/,
                                       MachineBasicBlock &MBB) const {
-  MachineBasicBlock::iterator MBBI = MBB.getLastNonDebugInstr();
-  const PCPUInstrInfo &LII =
-      *static_cast<const PCPUInstrInfo *>(STI.getInstrInfo());
-  DebugLoc DL = MBBI->getDebugLoc();
+  // MachineBasicBlock::iterator MBBI = MBB.getLastNonDebugInstr();
+  // const PCPUInstrInfo &LII =
+  //     *static_cast<const PCPUInstrInfo *>(STI.getInstrInfo());
+  // DebugLoc DL = MBBI->getDebugLoc();
 
-  // Restore the stack pointer using the callee's frame pointer value.
-  BuildMI(MBB, MBBI, DL, LII.get(PCPU::ADD_I_LO), PCPU::SP)
-      .addReg(PCPU::FP)
-      .addImm(0);
+  // // Restore the stack pointer using the callee's frame pointer value.
+  // BuildMI(MBB, MBBI, DL, LII.get(PCPU::ADD_I_LO), PCPU::SP)
+  //     .addReg(PCPU::FP)
+  //     .addImm(0);
 
-  // Restore the frame pointer from the stack.
-  BuildMI(MBB, MBBI, DL, LII.get(PCPU::LDW_RI), PCPU::FP)
-      .addReg(PCPU::FP)
-      .addImm(-8)
-      .addImm(LPAC::ADD);
+  // // Restore the frame pointer from the stack.
+  // BuildMI(MBB, MBBI, DL, LII.get(PCPU::LDW_RI), PCPU::FP)
+  //     .addReg(PCPU::FP)
+  //     .addImm(-8)
+  //     .addImm(LPAC::ADD);
 }
 
 void PCPUFrameLowering::determineCalleeSaves(MachineFunction &MF,
@@ -196,21 +196,21 @@ void PCPUFrameLowering::determineCalleeSaves(MachineFunction &MF,
                                               RegScavenger *RS) const {
   TargetFrameLowering::determineCalleeSaves(MF, SavedRegs, RS);
 
-  MachineFrameInfo &MFI = MF.getFrameInfo();
-  const PCPURegisterInfo *LRI =
-      static_cast<const PCPURegisterInfo *>(STI.getRegisterInfo());
-  int Offset = -4;
+  // MachineFrameInfo &MFI = MF.getFrameInfo();
+  // const PCPURegisterInfo *LRI =
+  //     static_cast<const PCPURegisterInfo *>(STI.getRegisterInfo());
+  // int Offset = -4;
 
-  // Reserve 4 bytes for the saved RCA
-  MFI.CreateFixedObject(4, Offset, true);
-  Offset -= 4;
+  // // Reserve 4 bytes for the saved RCA
+  // MFI.CreateFixedObject(4, Offset, true);
+  // Offset -= 4;
 
-  // Reserve 4 bytes for the saved FP
-  MFI.CreateFixedObject(4, Offset, true);
-  Offset -= 4;
+  // // Reserve 4 bytes for the saved FP
+  // MFI.CreateFixedObject(4, Offset, true);
+  // Offset -= 4;
 
-  if (LRI->hasBasePointer(MF)) {
-    MFI.CreateFixedObject(4, Offset, true);
-    SavedRegs.reset(LRI->getBaseRegister());
-  }
+  // if (LRI->hasBasePointer(MF)) {
+  //   MFI.CreateFixedObject(4, Offset, true);
+  //   SavedRegs.reset(LRI->getBaseRegister());
+  // }
 }

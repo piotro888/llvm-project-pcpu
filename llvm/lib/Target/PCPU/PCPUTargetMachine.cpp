@@ -113,11 +113,9 @@ bool PCPUPassConfig::addInstSelector() {
 // Implemented by targets that want to run passes immediately before
 // machine code is emitted.
 void PCPUPassConfig::addPreEmitPass() {
-  addPass(createPCPUDelaySlotFillerPass(getPCPUTargetMachine()));
 }
 
 // Run passes after prolog-epilog insertion and before the second instruction
 // scheduling pass.
 void PCPUPassConfig::addPreSched2() {
-  addPass(createPCPUMemAluCombinerPass());
 }
