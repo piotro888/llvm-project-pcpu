@@ -12,6 +12,13 @@
 
 include "PCPUInstrFormats.td"
 
+//===----------------------------------------------------------------------===//
+// PCPU Specific Node Definitions
+//===----------------------------------------------------------------------===//
+
+def PCPUret : SDNode<"PCPUISD::RET", SDTNone,
+                [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
+
 def ADD :
   PCPUFrr<0b0000000,  
     (outs GPR: $rd),
@@ -21,3 +28,10 @@ def ADD :
       : $rd, (add i32 : $rs1,
                   i32 : $rs2)),
   ]>;
+
+//===----------------------------------------------------------------------===//
+// Return instructions.
+//===----------------------------------------------------------------------===//
+let isTerminator = 1, isReturn = 1 in {
+  def RET : PCPUNul<0b0000001, (outs), (ins), "srs r6, 0 ; ret", [(PCPUret)]>;
+}

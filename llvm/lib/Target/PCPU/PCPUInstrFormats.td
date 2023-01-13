@@ -45,3 +45,14 @@ class PCPUFrr<bits<7> op, dag outs, dag ins, string asmstr, list<dag> pattern>:
 {
   let imm=0; // check if this is valid
 }
+
+class PCPUNul<bits<7> op, dag outs, dag ins, string asmstr, list<dag> pattern>: 
+  PCPUFrri<op, outs, ins, asmstr, pattern>
+{
+    // for testing only
+
+  let imm=0;
+  let rs1=0;
+  let rs2=0;
+  let rd=0;
+}

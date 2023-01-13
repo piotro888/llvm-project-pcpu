@@ -23,6 +23,13 @@ def PCPU_CCallingConv : CallingConv<[
   CCAssignToStack<4, 4>
 ]>;
 
+// Pass all args on stack if VA_ARGS.
+def PCPU_CCallingConv_VaArg : CallingConv<[
+  CCAssignToStack<1, 1>,
+  CCAssignToStack<2, 2>,
+  CCAssignToStack<4, 4>
+]>;
+
 // PCPU C return-value convention.
 def PCPU_CRetConv : CallingConv<[
   CCIfType<[i8, i16], CCPromoteToType<i32>>,
