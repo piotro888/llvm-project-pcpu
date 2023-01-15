@@ -44,5 +44,5 @@ void PCPUFrameLowering::determineCalleeSaves(MachineFunction &MF,
 }
 
 bool PCPUFrameLowering::hasFP(const MachineFunction &MF) const {
-  return true;
+  return true; // TODO: FP elimination, see CPU0
 }

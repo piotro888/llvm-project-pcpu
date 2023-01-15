@@ -40,11 +40,39 @@ class PCPUFrri<bits<7> op, dag outs, dag ins, string asmstr, list<dag> pattern>:
   let Inst{6-0}    = op;
 }
 
+//===----------------------------------------------------------------------===//
+// Subformats for Frri
+//===----------------------------------------------------------------------===//
+
 class PCPUFrr<bits<7> op, dag outs, dag ins, string asmstr, list<dag> pattern>: 
   PCPUFrri<op, outs, ins, asmstr, pattern>
 {
   let imm=0; // check if this is valid
 }
+
+class PCPUFr1<bits<7> op, dag outs, dag ins, string asmstr, list<dag> pattern>: 
+  PCPUFrri<op, outs, ins, asmstr, pattern>
+{
+  let imm=0;
+  let rs2=0;
+}
+
+class PCPUFri<bits<7> op, dag outs, dag ins, string asmstr, list<dag> pattern>: 
+  PCPUFrri<op, outs, ins, asmstr, pattern>
+{
+  let rs2=0;
+}
+
+class PCPUFi<bits<7> op, dag outs, dag ins, string asmstr, list<dag> pattern>: 
+  PCPUFrri<op, outs, ins, asmstr, pattern>
+{
+  let rs1=0;
+  let rs2=0;
+}
+
+//===----------------------------------------------------------------------===//
+// Misc formats
+//===----------------------------------------------------------------------===//
 
 class PCPUNul<bits<7> op, dag outs, dag ins, string asmstr, list<dag> pattern>: 
   PCPUFrri<op, outs, ins, asmstr, pattern>

@@ -37,8 +37,8 @@ let SubRegIndices = [sub_32] in {
 // Register classes.
 def GPR : RegisterClass<"PCPU", [i32], 32,
     (add
-     R7,  FP,  // frame pointer
-     R5,  SP,  // stack pointer
      R1, R2, R3, R0, R4,  // GPR 
-     R6,  RCA  // return value
+     R6,  RCA,  // return value
+     R5,  FP,  // frame pointer
+     R7,  SP  // stack pointer
     )>;

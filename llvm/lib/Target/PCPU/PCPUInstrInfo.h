@@ -34,6 +34,24 @@ public:
   virtual const PCPURegisterInfo &getRegisterInfo() const {
     return RegisterInfo;
   }
+  
+  void copyPhysReg(MachineBasicBlock &MBB, MachineBasicBlock::iterator Position,
+                   const DebugLoc &DL, MCRegister DestinationRegister,
+                   MCRegister SourceRegister, bool KillSource) const override;
+
+  void storeRegToStackSlot(MachineBasicBlock &MBB,
+                           MachineBasicBlock::iterator Position,
+                           Register SourceRegister, bool IsKill, int FrameIndex,
+                           const TargetRegisterClass *RegisterClass,
+                           const TargetRegisterInfo *RegisterInfo,
+                           Register VReg) const override;
+
+  void loadRegFromStackSlot(MachineBasicBlock &MBB,
+                            MachineBasicBlock::iterator Position,
+                            Register DestinationRegister, int FrameIndex,
+                            const TargetRegisterClass *RegisterClass,
+                            const TargetRegisterInfo *RegisterInfo,
+                            Register VReg) const override;
 };
 
 } // namespace llvm

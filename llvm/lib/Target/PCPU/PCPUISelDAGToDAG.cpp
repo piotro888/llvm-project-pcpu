@@ -58,6 +58,10 @@ private:
 
   // Instruction Selection not handled by the auto-generated tablgen
   void Select(SDNode *N) override;
+
+  // Support functions for the opcodes of Instruction Selection
+  // not handled by the auto-generated tablgen
+  void selectFrameIndex(SDNode *N);
 };
 
 } // namespace
@@ -77,14 +81,33 @@ void PCPUDAGToDAGISel::Select(SDNode *Node) {
 
   // Instruction Selection not handled by the auto-generated tablegen selection
   // should be handled here.
+
+  // TODO: Select FrameIndeximm
   EVT VT = Node->getValueType(0);
   switch (Opcode) {
+  case ISD::FrameIndex:
+    selectFrameIndex(Node);
+    return;
   default:
     break;
   }
 
   // Select the default instruction
   SelectCode(Node);
+}
+
+void PCPUDAGToDAGISel::selectFrameIndex(SDNode *Node) {
+  SDLoc DL(Node);
+  SDValue Imm = CurDAG->getTargetConstant(0, DL, MVT::i32);
+  int FI = cast<FrameIndexSDNode>(Node)->getIndex();
+  EVT VT = Node->getValueType(0);
+  SDValue TFI = CurDAG->getTargetFrameIndex(FI, VT);
+  unsigned Opc = PCPU::ADI;
+  if (Node->hasOneUse()) {
+    CurDAG->SelectNodeTo(Node, Opc, VT, TFI, Imm);
+    return;
+  }
+  ReplaceNode(Node, CurDAG->getMachineNode(Opc, DL, VT, TFI, Imm));
 }
 
 // createPCPUISelDag - This pass converts a legalized DAG into a

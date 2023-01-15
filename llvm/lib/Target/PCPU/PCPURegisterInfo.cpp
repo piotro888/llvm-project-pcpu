@@ -56,9 +56,52 @@ bool PCPURegisterInfo::requiresRegisterScavenging(
 bool PCPURegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
                                             int SPAdj, unsigned FIOperandNum,
                                             RegScavenger *RS) const {
-  llvm_unreachable("Unsupported eliminateFrameIndex");
-}
+  assert(SPAdj == 0 && "Unexpected");
 
+  MachineInstr &MI = *II;
+  MachineFunction &MF = *MI.getParent()->getParent();
+  const TargetInstrInfo *TII = MF.getSubtarget().getInstrInfo();
+  const TargetFrameLowering *TFI = MF.getSubtarget().getFrameLowering();
+  bool HasFP = TFI->hasFP(MF);
+  DebugLoc DL = MI.getDebugLoc();
+
+  int FrameIndex = MI.getOperand(FIOperandNum).getIndex();
+
+  int Offset = MF.getFrameInfo().getObjectOffset(FrameIndex) +
+               MI.getOperand(FIOperandNum + 1).getImm();
+
+  // Addressable stack objects are addressed using neg. offsets from fp
+  // or pos. offsets from sp/basepointer
+  if (!HasFP || (hasStackRealignment(MF) && FrameIndex >= 0))
+    Offset += MF.getFrameInfo().getStackSize();
+
+  Register FrameReg = getFrameRegister(MF);
+  if (FrameIndex >= 0) {
+    if (hasStackRealignment(MF)) //?
+      FrameReg = PCPU::SP;
+  }
+
+  // Offset will always fit to immediate
+
+  // ALU arithmetic ops take unsigned immediates. If the offset is negative,
+  // we replace the instruction with one that inverts the opcode and negates
+  // the immediate.
+  if ((Offset < 0) && (MI.getOpcode() == PCPU::ADD)) {
+    // We know this is an ALU op, so we know the operands are as follows:
+    // 0: destination register
+    // 1: source register (frame register)
+    // 2: immediate
+    BuildMI(*MI.getParent(), II, DL, TII->get(MI.getOpcode()),
+            MI.getOperand(0).getReg())
+        .addReg(FrameReg)
+        .addImm(-Offset);
+    MI.eraseFromParent();
+  } else {
+    MI.getOperand(FIOperandNum).ChangeToRegister(FrameReg, /*isDef=*/false);
+    MI.getOperand(FIOperandNum + 1).ChangeToImmediate(Offset);
+  }
+  return false;
+}
 
 unsigned PCPURegisterInfo::getRARegister() const { return PCPU::RCA; }
 
