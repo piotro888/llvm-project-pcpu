@@ -16,8 +16,25 @@ include "PCPUInstrFormats.td"
 // PCPU Specific Node Definitions
 //===----------------------------------------------------------------------===//
 
+//  These are target-independent nodes, but have target-specific formats.
+def SDT_PCPUCall         : SDTypeProfile<0, -1, [SDTCisVT<0, i32>]>;
+def SDT_PCPUCallSeqStart : SDCallSeqStart<[SDTCisVT<0, i32>,
+                                            SDTCisVT<1, i32>]>;
+def SDT_PCPUCallSeqEnd   : SDCallSeqEnd<[SDTCisVT<0, i32>,
+                                          SDTCisVT<1, i32>]>;
+
+// Nodes
+def PCPUcall: SDNode<"PCPUISD::CALL", SDT_PCPUCall,
+                [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue,
+                SDNPVariadic]>;
+def PCPUcallSeqStart     : SDNode<"ISD::CALLSEQ_START", SDT_PCPUCallSeqStart,
+                              [SDNPHasChain, SDNPOutGlue]>;
+def PCPUcallSeqEnd       : SDNode<"ISD::CALLSEQ_END", SDT_PCPUCallSeqEnd,
+                              [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue]>;
 def PCPUret : SDNode<"PCPUISD::RET", SDTNone,
                 [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
+
+def CallTarget : Operand<i32>;
 
 //===----------------------------------------------------------------------===//
 // MOVE INSTRUCTIONS
@@ -103,6 +120,29 @@ def ADI :
 //===----------------------------------------------------------------------===//
 // CALL/RET instructions
 //===----------------------------------------------------------------------===//
+
+// JUMP AND LINK
+let isCall = 1, Uses = [SP], Defs = [RCA] in { //FP? 
+let rd = 0x6, rs1=0 in {
+def CALLi : PCPUFr1<0b0001111,
+              (outs), (ins CallTarget:$k),
+              "jal r6, $k", [(PCPUcall imm:$k)]>;
+}
+//def CALLr TODO
+}
+
+// Call patterns
+def : Pat<(PCPUcall tglobaladdr:$dst), (CALLi tglobaladdr:$dst)>;
+def : Pat<(PCPUcall texternalsym:$dst), (CALLi texternalsym:$dst)>;
+
+let Defs = [SP], Uses = [SP] in {
+  def ADJCALLSTACKDOWN : Pseudo<(outs), (ins i32imm:$amt1, i32imm:$amt2),
+                                "#ADJCALLSTACKDOWN $amt1 $amt2",
+                                [(PCPUcallSeqStart timm:$amt1, timm:$amt2)]>;
+  def ADJCALLSTACKUP   : Pseudo<(outs), (ins i32imm:$amt1, i32imm:$amt2),
+                                "#ADJCALLSTACKUP $amt1 $amt2",
+                                [(PCPUcallSeqEnd timm:$amt1, timm:$amt2)]>;
+}
 
 let isTerminator = 1, isReturn = 1 in {
   // FIXME: Expand to SRS with correct bits set.

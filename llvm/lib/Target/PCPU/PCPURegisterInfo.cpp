@@ -43,6 +43,7 @@ BitVector PCPURegisterInfo::getReservedRegs(const MachineFunction &MF) const {
   BitVector Reserved(getNumRegs());
 
   Reserved.set(PCPU::SP);
+  Reserved.set(PCPU::RCA);
   Reserved.set(PCPU::FP);
   
   return Reserved;

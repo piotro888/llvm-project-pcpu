@@ -268,13 +268,7 @@ SDValue PCPUTargetLowering::LowerCCCCallTo(
   InFlag = Chain.getValue(1);
 
   // Create the CALLSEQ_END node.
-  Chain = DAG.getCALLSEQ_END(
-    Chain, 
-    DAG.getConstant(NumBytes, DL, getPointerTy(DAG.getDataLayout())),
-    DAG.getConstant(0, DL, getPointerTy(DAG.getDataLayout())),
-    InFlag,
-    DL
-  );
+  Chain = DAG.getCALLSEQ_END(Chain, NumBytes, 0, InFlag, DL);
   InFlag = Chain.getValue(1);
 
   // Handle result values, copying them out of physregs into vregs that we

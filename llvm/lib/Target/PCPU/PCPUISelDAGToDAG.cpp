@@ -68,6 +68,8 @@ private:
 
 char PCPUDAGToDAGISel::ID = 0;
 
+INITIALIZE_PASS(PCPUDAGToDAGISel, DEBUG_TYPE, PASS_NAME, false, false)
+
 // Select instructions not customized! Used for
 // expanded, promoted and normal instructions
 void PCPUDAGToDAGISel::Select(SDNode *Node) {

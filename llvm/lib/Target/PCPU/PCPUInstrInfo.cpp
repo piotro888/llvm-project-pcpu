@@ -28,7 +28,7 @@ using namespace llvm;
 #include "PCPUGenInstrInfo.inc"
 
 PCPUInstrInfo::PCPUInstrInfo()
-    : PCPUGenInstrInfo(),
+    : PCPUGenInstrInfo(PCPU::ADJCALLSTACKDOWN, PCPU::ADJCALLSTACKUP),
       RegisterInfo() {}
 
 void PCPUInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
@@ -56,7 +56,6 @@ void PCPUInstrInfo::storeRegToStackSlot(
   if (Position != MBB.end()) {
     DL = Position->getDebugLoc();
   }
-  llvm_unreachable("test");
 
   if (!PCPU::GPRRegClass.hasSubClassEq(RegisterClass)) {
     llvm_unreachable("Can't store this register to stack slot");
@@ -73,7 +72,6 @@ void PCPUInstrInfo::loadRegFromStackSlot(
     const TargetRegisterClass *RegisterClass,
     const TargetRegisterInfo * /*RegisterInfo*/, Register /*VReg*/) const {
   DebugLoc DL;
-  llvm_unreachable("test");
   if (Position != MBB.end()) {
     DL = Position->getDebugLoc();
   }

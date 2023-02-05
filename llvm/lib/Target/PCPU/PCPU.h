@@ -25,6 +25,8 @@ class PassRegistry;
 // PCPU-specific DAG, ready for instruction scheduling.
 FunctionPass *createPCPUISelDag(PCPUTargetMachine &TM);
 
+void initializePCPUDAGToDAGISelPass(PassRegistry &);
+
 } // namespace llvm
 
 #endif // LLVM_LIB_TARGET_PCPU_PCPU_H

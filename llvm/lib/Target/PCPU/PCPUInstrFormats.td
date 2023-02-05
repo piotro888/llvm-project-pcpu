@@ -84,3 +84,10 @@ class PCPUNul<bits<7> op, dag outs, dag ins, string asmstr, list<dag> pattern>:
   let rs2=0;
   let rd=0;
 }
+
+// Pseudo instructions
+class Pseudo<dag outs, dag ins, string asmstr, list<dag> pattern>
+    : PCPUInst<outs, ins, asmstr, pattern> {
+  let Inst{31 - 0} = 0;
+  let isPseudo = 1;
+}
