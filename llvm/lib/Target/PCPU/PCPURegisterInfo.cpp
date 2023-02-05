@@ -42,9 +42,12 @@ PCPURegisterInfo::getCalleeSavedRegs(const MachineFunction * /*MF*/) const {
 BitVector PCPURegisterInfo::getReservedRegs(const MachineFunction &MF) const {
   BitVector Reserved(getNumRegs());
 
-  Reserved.set(PCPU::SP);
-  Reserved.set(PCPU::RCA);
   Reserved.set(PCPU::FP);
+  Reserved.set(PCPU::R5);
+  Reserved.set(PCPU::RCA);
+  Reserved.set(PCPU::R6); // TODO: Unreserve R6? It can be used and is explicitly clobbered on call (add clob to ret). RCA must be reserved for use as keyword, but r6 still can be used?
+  Reserved.set(PCPU::SP);
+  Reserved.set(PCPU::R7);
   
   return Reserved;
 }

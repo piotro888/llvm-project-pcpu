@@ -27,7 +27,7 @@ protected:
 public:
   explicit PCPUFrameLowering(const PCPUSubtarget &Subtarget)
       : TargetFrameLowering(StackGrowsDown,
-                            /*StackAlignment=*/Align(8),
+                            /*StackAlignment=*/Align(4),
                             /*LocalAreaOffset=*/0),
         STI(Subtarget) {}
 
@@ -44,6 +44,8 @@ public:
 
   void determineCalleeSaves(MachineFunction &MF, BitVector &SavedRegs,
                             RegScavenger *RS = nullptr) const override;
+private:
+  void determineFrameLayout(MachineFunction &MF) const;
 };
 
 } // namespace llvm

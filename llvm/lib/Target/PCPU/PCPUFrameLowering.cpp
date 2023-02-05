@@ -23,6 +23,44 @@
 
 using namespace llvm;
 
+// Determines the size of the frame and maximum call frame size.
+void PCPUFrameLowering::determineFrameLayout(MachineFunction &MF) const {
+  MachineFrameInfo &MFI = MF.getFrameInfo();
+  const PCPURegisterInfo *PRI = STI.getRegisterInfo();
+
+  // Get the number of bytes to allocate from the FrameInfo.
+  unsigned FrameSize = MFI.getStackSize();
+  
+  // increment frame size because of RCA stored in prologue at offset=0
+  // correction because compiler thinks that this is not an object on our frame
+  FrameSize += 4; 
+
+  // Get the alignment.
+  Align StackAlign =
+      PRI->hasStackRealignment(MF) ? MFI.getMaxAlign() : getStackAlign();
+
+  // Get the maximum call frame size of all the calls.
+  unsigned MaxCallFrameSize = MFI.getMaxCallFrameSize();
+
+  // If we have dynamic alloca then MaxCallFrameSize needs to be aligned so
+  // that allocations will be aligned.
+  if (MFI.hasVarSizedObjects())
+    MaxCallFrameSize = alignTo(MaxCallFrameSize, StackAlign);
+
+  // Update maximum call frame size.
+  MFI.setMaxCallFrameSize(MaxCallFrameSize);
+
+  // Include call frame size in total.
+  if (!(hasReservedCallFrame(MF) && MFI.adjustsStack()))
+    FrameSize += MaxCallFrameSize;
+
+  // Make sure the frame is aligned.
+  FrameSize = alignTo(FrameSize, StackAlign);
+
+  // Update frame info.
+  MFI.setStackSize(FrameSize);
+}
+
 void PCPUFrameLowering::emitPrologue(MachineFunction &MF,
                                       MachineBasicBlock &MBB) const {
   MachineFrameInfo &MFI = MF.getFrameInfo();
@@ -34,6 +72,8 @@ void PCPUFrameLowering::emitPrologue(MachineFunction &MF,
   // TODO: Implement IRQ handlers
   // TODO: Implement VaArgs
   
+  determineFrameLayout(MF);
+
   unsigned StackSize = MFI.getStackSize();
 
   // Push JAL R6 PC
@@ -47,7 +87,7 @@ void PCPUFrameLowering::emitPrologue(MachineFunction &MF,
   BuildMI(MBB, MBBI, DL, PII.get(PCPU::STO))
       .addReg(PCPU::FP)
       .addReg(PCPU::SP)
-      .addImm(4)
+      .addImm(-4)
       .setMIFlag(MachineInstr::FrameSetup);
 
   // Generate new FP
@@ -99,7 +139,7 @@ void PCPUFrameLowering::determineCalleeSaves(MachineFunction &MF,
   TargetFrameLowering::determineCalleeSaves(MF, SavedRegs, RS);
 
   MachineFrameInfo &MFI = MF.getFrameInfo();
-  int Offset = 0;
+  int Offset = 0; // Alloc first @ SP. (Offsets for registers in ISelLowering for this to work and call frame calc)
 
   // Reserve 4 bytes for the saved RCA(PC)
   MFI.CreateFixedObject(4, Offset, true);

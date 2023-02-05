@@ -206,7 +206,7 @@ SDValue PCPUTargetLowering::LowerCCCCallTo(
 
       SDValue PtrOff =
           DAG.getNode(ISD::ADD, DL, getPointerTy(DAG.getDataLayout()), StackPtr,
-                      DAG.getIntPtrConstant(VA.getLocMemOffset(), DL));
+                      DAG.getIntPtrConstant(VA.getLocMemOffset()+4, DL));
 
       MemOpChains.push_back(
           DAG.getStore(Chain, DL, Arg, PtrOff, MachinePointerInfo()));
@@ -375,7 +375,9 @@ SDValue PCPUTargetLowering::LowerCCCArguments(
                << EVT(VA.getLocVT()).getEVTString() << "\n";
       }
       // Create the frame index object for this incoming parameter...
-      int FI = MFI.CreateFixedObject(ObjSize, VA.getLocMemOffset(), true);
+      // +4 because SP points to first free address, which we cant take, decrement it by one index
+      // collison with locals is fixed at computing stack size in lowering
+      int FI = MFI.CreateFixedObject(ObjSize, VA.getLocMemOffset()+4, true);
 
       // Create the SelectionDAG nodes corresponding to a load
       // from this parameter
