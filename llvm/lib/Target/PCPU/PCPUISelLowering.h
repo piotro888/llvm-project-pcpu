@@ -28,6 +28,8 @@ enum {
 
   CALL, // abstract CALL
   RET,  // RET flag
+  CMP, // compare two operands, set FREG
+  BR_CC, // Conditional jump
 };
 } // namespace PCPUISD
 
@@ -45,7 +47,7 @@ public:
   const char *getTargetNodeName(unsigned Opcode) const override;
 
   // SDValue LowerBlockAddress(SDValue Op, SelectionDAG &DAG) const;
-  // SDValue LowerBR_CC(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerBR_CC(SDValue Op, SelectionDAG &DAG) const;
   // SDValue LowerConstantPool(SDValue Op, SelectionDAG &DAG) const;
   // SDValue LowerDYNAMIC_STACKALLOC(SDValue Op, SelectionDAG &DAG) const;
   // SDValue LowerFRAMEADDR(SDValue Op, SelectionDAG &DAG) const;

@@ -42,3 +42,12 @@ def GPR : RegisterClass<"PCPU", [i32], 32,
      R5,  FP,  // frame pointer
      R7,  SP  // stack pointer
     )>;
+
+// Special registers class
+class PCPUSReg <bits<16> num, string n> : Register <n> {
+  let Namespace = "PCPU";
+  let HWEncoding = num;
+}
+
+// Flags register
+def FREG : PCPUSReg<1, "SR_FLAGS">;

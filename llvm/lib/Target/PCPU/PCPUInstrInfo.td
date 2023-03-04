@@ -22,6 +22,9 @@ def SDT_PCPUCallSeqStart : SDCallSeqStart<[SDTCisVT<0, i32>,
                                             SDTCisVT<1, i32>]>;
 def SDT_PCPUCallSeqEnd   : SDCallSeqEnd<[SDTCisVT<0, i32>,
                                           SDTCisVT<1, i32>]>;
+def SDT_PCPUCmp : SDTypeProfile<0, 2, [SDTCisInt<0>, SDTCisSameAs<0, 1>]>;
+def SDT_PCPUBrcc : SDTypeProfile<0,  2, [SDTCisVT<0, OtherVT>,
+                                        SDTCisVT<1, i32>]>;
 
 // Nodes
 def PCPUcall: SDNode<"PCPUISD::CALL", SDT_PCPUCall,
@@ -33,8 +36,18 @@ def PCPUcallSeqEnd       : SDNode<"ISD::CALLSEQ_END", SDT_PCPUCallSeqEnd,
                               [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue]>;
 def PCPUret : SDNode<"PCPUISD::RET", SDTNone,
                 [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
+def PCPUcmp : SDNode<"PCPUISD::CMP", SDT_PCPUCmp, [SDNPOutGlue]>;
+def PCPUbrcc : SDNode<"PCPUISD::BR_CC", SDT_PCPUBrcc, [SDNPHasChain, SDNPInGlue]>;
 
+// Types
 def CallTarget : Operand<i32>;
+// Branch targets have OtherVT type.
+def brtarget : Operand<OtherVT> {
+  let EncoderMethod = "getBranchTargetOpValue";
+}
+def CCOp : Operand<i32> {
+  let PrintMethod = "printCCOperand";
+}
 
 //===----------------------------------------------------------------------===//
 // MOVE INSTRUCTIONS
@@ -99,23 +112,45 @@ def LDDo : PCPUFrri<0b1000011,
 // ARTIHMETIC instructions
 //===----------------------------------------------------------------------===//
 
-def ADD :
-  PCPUFrr<0b0000111,  
-    (outs GPR: $rd),
-    (ins GPR: $rs1, GPR: $rs2),
-    "add $rd, $rs1, $rs2",
-    [(set i32 : $rd, 
-      (add i32 : $rs1, i32 : $rs2))]
+let Defs = [FREG] in {
+  def ADD :
+    PCPUFrr<0b0000111,  
+      (outs GPR: $rd),
+      (ins GPR: $rs1, GPR: $rs2),
+      "add $rd, $rs1, $rs2",
+      [(set i32 : $rd, 
+        (add i32 : $rs1, i32 : $rs2))]
+    >;
+
+  def ADI :
+    PCPUFri<0b0001000,  
+      (outs GPR: $rd),
+      (ins GPR: $rs1, i32imm: $imm),
+      "adi $rd, $rs1, $imm",
+      [(set i32 : $rd, 
+        (add i32 : $rs1, imm : $imm))]
+    >;
+}
+
+//===----------------------------------------------------------------------===//
+// CMP instructions
+//===----------------------------------------------------------------------===//
+
+let rd = 0, Defs = [FREG] in {
+  def CMP: PCPUFrr<0b0001100,
+              (outs), 
+              (ins GPR: $rs1, GPR: $rs2),
+              "cmp $rs1, $rs2",
+              [(PCPUcmp i32:$rs1, i32:$rs2)]
   >;
 
-def ADI :
-  PCPUFri<0b0001000,  
-    (outs GPR: $rd),
-    (ins GPR: $rs1, i32imm: $imm),
-    "adi $rd, $rs1, $imm",
-    [(set i32 : $rd, 
-      (add i32 : $rs1, imm : $imm))]
-  >;
+  def CMI: PCPUFri<0b0001101,
+              (outs),
+              (ins GPR: $rs1, i32imm: $imm),
+              "cmp $rs1, $imm",
+              [(PCPUcmp i32:$rs1, (i32 imm:$imm))]
+  >; 
+}
 
 //===----------------------------------------------------------------------===//
 // CALL/RET instructions
@@ -147,4 +182,22 @@ let Defs = [SP], Uses = [SP] in {
 let isTerminator = 1, isReturn = 1 in {
   // FIXME: Expand to SRS with correct bits set.
   def RET : PCPUNul<0b1111111, (outs), (ins), "srs r6, 0 ; ret", [(PCPUret)]>;
+}
+
+//===----------------------------------------------------------------------===//
+// JUMP/BRANCH instructions
+//===----------------------------------------------------------------------===//
+
+let isBranch = 1, isTerminator = 1 in {
+  def JMP : PCPUFJMPCC<0b0001110, (outs), (ins brtarget:$target),
+                  "jmp $target",
+                  [(br bb:$target)]> {
+    let cond = 0;
+  }
+
+  let Uses = [FREG] in {
+  def JCOND : PCPUFJMPCC<0b0001110, (outs), (ins brtarget:$target, CCOp:$cond),
+                         "j$cond $target",
+                        [(PCPUbrcc bb:$target, imm:$cond)]>;
+  }
 }

@@ -74,6 +74,18 @@ class PCPUFi<bits<7> op, dag outs, dag ins, string asmstr, list<dag> pattern>:
 // Misc formats
 //===----------------------------------------------------------------------===//
 
+class PCPUFJMPCC<bits<7> op, dag outs, dag ins, string asmstr, list<dag> pattern>
+  : PCPUInst<outs, ins, asmstr, pattern> 
+{
+  bits<16> target;
+  bits<4>  cond;
+  
+  let Inst{31-16} = target;
+  let Inst{9-8}   = 0;
+  let Inst{10-7}  = cond;
+  let Inst{6-0}   = op;
+}
+
 class PCPUNul<bits<7> op, dag outs, dag ins, string asmstr, list<dag> pattern>: 
   PCPUFrri<op, outs, ins, asmstr, pattern>
 {

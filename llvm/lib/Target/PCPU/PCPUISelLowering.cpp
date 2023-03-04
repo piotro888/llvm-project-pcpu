@@ -66,12 +66,23 @@ PCPUTargetLowering::PCPUTargetLowering(const TargetMachine &TM,
   TRI = STI.getRegisterInfo();
   computeRegisterProperties(TRI);
 
+  // Use PCPU branch codes
+  setOperationAction(ISD::BR_CC, MVT::i32, Custom);
+
+  // Expand complex branches (to sub ops like BR_CC)
+  setOperationAction(ISD::BR_JT, MVT::Other, Expand);
+  setOperationAction(ISD::BRCOND, MVT::Other, Expand);
+
+  setOperationAction(ISD::SELECT, MVT::i32, Expand);
+
   setStackPointerRegisterToSaveRestore(PCPU::SP);
 }
 
 SDValue PCPUTargetLowering::LowerOperation(SDValue Op,
                                             SelectionDAG &DAG) const {
   switch (Op.getOpcode()) {
+  case ISD::BR_CC:
+    return LowerBR_CC(Op, DAG);
   default:
     llvm_unreachable("unimplemented operand");
   }
@@ -83,6 +94,10 @@ const char *PCPUTargetLowering::getTargetNodeName(unsigned Opcode) const {
     return "PCPUISD::CALL";
   case PCPUISD::RET:
     return "PCPUISD::RET";
+  case PCPUISD::CMP:
+    return "PCPUISD::CMP";
+  case PCPUISD::BR_CC:
+    return "PCPUISD::BR_CC";
   default:
     return nullptr;
   }
@@ -470,4 +485,63 @@ PCPUTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
   // Return Void
   return DAG.getNode(Opc, DL, MVT::Other,
                      ArrayRef<SDValue>(&RetOps[0], RetOps.size()));
+}
+
+// Translate ISD cond code into PCPU branch code
+static LPCC::CondCode IntCondCCodeToICC(SDValue CC, const SDLoc &DL,
+                                        SDValue &RHS, SelectionDAG &DAG) {
+  ISD::CondCode SetCCOpcode = cast<CondCodeSDNode>(CC)->get();
+
+  // Only integer comparasions are supported
+  switch (SetCCOpcode) {
+  case ISD::SETEQ:
+    return LPCC::ICC_EQ;
+  case ISD::SETGT:
+    return LPCC::ICC_GT;
+  case ISD::SETUGT:
+    return LPCC::ICC_GTU;
+  case ISD::SETLT:
+    return LPCC::ICC_LT;
+  case ISD::SETULT:
+    return LPCC::ICC_CA; // LTU->CA
+  case ISD::SETLE:
+    return LPCC::ICC_LE;
+  case ISD::SETULE:
+    return LPCC::ICC_LEU;
+  case ISD::SETGE:
+    return LPCC::ICC_GE;
+  case ISD::SETUGE:
+    return LPCC::ICC_GEU;
+  case ISD::SETNE:
+    return LPCC::ICC_NE;
+  case ISD::SETONE:
+  case ISD::SETUNE:
+  case ISD::SETOGE:
+  case ISD::SETOLE:
+  case ISD::SETOLT:
+  case ISD::SETOGT:
+  case ISD::SETOEQ:
+  case ISD::SETUEQ:
+  case ISD::SETO:
+  case ISD::SETUO:
+    llvm_unreachable("Unsupported comparison.");
+  default:
+    llvm_unreachable("Unknown integer condition code!");
+  }
+}
+
+SDValue PCPUTargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const {
+  SDValue Chain = Op.getOperand(0);
+  SDValue Cond = Op.getOperand(1);
+  SDValue LHS = Op.getOperand(2);
+  SDValue RHS = Op.getOperand(3);
+  SDValue Dest = Op.getOperand(4);
+  SDLoc DL(Op);
+
+  LPCC::CondCode CC = IntCondCCodeToICC(Cond, DL, RHS, DAG);
+  SDValue TargetCC = DAG.getConstant(CC, DL, MVT::i32);
+  SDValue Flag = DAG.getNode(PCPUISD::CMP, DL, MVT::Glue, LHS, RHS, TargetCC);
+
+  return DAG.getNode(PCPUISD::BR_CC, DL, Op.getValueType(), Chain, Dest,
+                     TargetCC, Flag);
 }
