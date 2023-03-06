@@ -69,44 +69,37 @@ def LDI : PCPUFi<0b0000100,
   >;
 }
 
-// TODO: lets params, subclass
-let rd=0 in {
-def STO : PCPUFrri<0b0000110,
-    (outs),
-    (ins GPR: $rs1, GPR: $rs2, i32imm: $imm),
-    "sto $rs1, $rs2, $imm",
-    [(store i32 : $rs1, (add i32 : $rs2, imm : $imm))]
-  >;
+// TODO: lets params
+
+class StoreOP <dag ins, string asmstr, list<dag> pattern> :
+  PCPUFrri<0b0000110, (outs), ins, asmstr, pattern> {
+    let rd = 0;
 }
 
-let rs2=0 in {
-def LDO : PCPUFrri<0b0000011,
+class LoadOP <dag outs, dag ins, string asmstr, list<dag> pattern> :
+  PCPUFrri<0b0000011, outs, ins, asmstr, pattern> {
+    let rs2 = 0;
+}
+
+def STO: StoreOP<
+  (ins GPR: $rs1, GPR: $rs2, i32imm: $imm),
+  "sto $rs1, $rs2, $imm",
+  [(store i32 : $rs1, (add i32 : $rs2, imm : $imm))]>;
+
+// (store [reg]) -> (store [reg]+0)
+def : Pat<(store i32:$rs1, i32:$rs2),
+          (STO i32:$rs1, i32:$rs2, (i32 0))>;
+
+def LDO : LoadOP<
     (outs GPR: $rd),
     (ins GPR: $rs1, i32imm: $imm),
     "ldo $rd, $rs1, $imm",
     [(set i32 : $rd, (load (add i32 : $rs1, imm : $imm)))]
-  >;
-}
+>;
 
-// TODO: lets params, subclass
-// TODO: replace with STO/LDO, lower/select?
-let rd=0, imm=0 in {
-def STDo : PCPUFrri<0b1000110,
-    (outs),
-    (ins GPR: $rs1, GPR: $rs2),
-    "std $rs1, $rs2, <0>",
-    [(store i32 : $rs1, i32 : $rs2)]
-  >;
-}
-
-let rs2=0, imm=0 in {
-def LDDo : PCPUFrri<0b1000011,
-    (outs GPR: $rd),
-    (ins GPR: $rs1),
-    "ldd $rd, $rs1, <0>",
-    [(set i32 : $rd, (load i32 : $rs1))]
-  >;
-}
+// (load [reg]) -> (load [reg]+0)
+def : Pat<(i32 (load i32:$rs1)),
+          (LDO i32:$rs1, (i32 0))>;
 
 //===----------------------------------------------------------------------===//
 // ARTIHMETIC instructions
