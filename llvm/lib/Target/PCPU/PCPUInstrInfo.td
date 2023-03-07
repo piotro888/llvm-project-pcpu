@@ -25,6 +25,7 @@ def SDT_PCPUCallSeqEnd   : SDCallSeqEnd<[SDTCisVT<0, i32>,
 def SDT_PCPUCmp : SDTypeProfile<0, 2, [SDTCisInt<0>, SDTCisSameAs<0, 1>]>;
 def SDT_PCPUBrcc : SDTypeProfile<0,  2, [SDTCisVT<0, OtherVT>,
                                         SDTCisVT<1, i32>]>;
+def SDT_PCPUWrapper : SDTypeProfile<1, 1, [SDTCisSameAs<0, 1>, SDTCisPtrTy<0>]>;
 
 // Nodes
 def PCPUcall: SDNode<"PCPUISD::CALL", SDT_PCPUCall,
@@ -38,6 +39,7 @@ def PCPUret : SDNode<"PCPUISD::RET", SDTNone,
                 [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
 def PCPUcmp : SDNode<"PCPUISD::CMP", SDT_PCPUCmp, [SDNPOutGlue]>;
 def PCPUbrcc : SDNode<"PCPUISD::BR_CC", SDT_PCPUBrcc, [SDNPHasChain, SDNPInGlue]>;
+def PCPUwrapper : SDNode<"PCPUISD::WRAPPER", SDT_PCPUWrapper>;
 
 // Types
 def CallTarget : Operand<i32>;
@@ -71,17 +73,24 @@ def LDI : PCPUFi<0b0000100,
 
 // TODO: lets params
 
-class StoreOP <dag ins, string asmstr, list<dag> pattern> :
-  PCPUFrri<0b0000110, (outs), ins, asmstr, pattern> {
+class StoreOP <bits<7> op, dag ins, string asmstr, list<dag> pattern> :
+  PCPUFrri<op, (outs), ins, asmstr, pattern> {
     let rd = 0;
 }
 
-class LoadOP <dag outs, dag ins, string asmstr, list<dag> pattern> :
-  PCPUFrri<0b0000011, outs, ins, asmstr, pattern> {
+class LoadOP <bits<7> op, dag outs, dag ins, string asmstr, list<dag> pattern> :
+  PCPUFrri<op, outs, ins, asmstr, pattern> {
     let rs2 = 0;
 }
 
-def STO: StoreOP<
+def STD: StoreOP<0b0000101,
+  (ins GPR: $rs1, i32imm: $imm),
+  "std $rs1, $imm",
+  [(store i32 : $rs1, imm : $imm)]> {
+    let rs2 = 0;
+}
+
+def STO: StoreOP<0b0000110,
   (ins GPR: $rs1, GPR: $rs2, i32imm: $imm),
   "sto $rs1, $rs2, $imm",
   [(store i32 : $rs1, (add i32 : $rs2, imm : $imm))]>;
@@ -90,7 +99,15 @@ def STO: StoreOP<
 def : Pat<(store i32:$rs1, i32:$rs2),
           (STO i32:$rs1, i32:$rs2, (i32 0))>;
 
-def LDO : LoadOP<
+def LDD : LoadOP<0b0000010,
+  (outs GPR: $rd),
+  (ins i32imm: $imm),
+  "ldd $rd, $imm",
+  [(set i32 : $rd, (load imm : $imm))]> {
+    let rs1 = 0;
+}
+
+def LDO : LoadOP<0b0000011,
     (outs GPR: $rd),
     (ins GPR: $rs1, i32imm: $imm),
     "ldo $rd, $rs1, $imm",
@@ -258,3 +275,12 @@ let isBranch = 1, isTerminator = 1 in {
                         [(PCPUbrcc bb:$target, imm:$cond)]>;
   }
 }
+
+//===----------------------------------------------------------------------===//
+// Addressing
+//===----------------------------------------------------------------------===//
+
+// GlobalAddress
+def : Pat<(i32(PCPUwrapper tglobaladdr : $dst)), (LDI tglobaladdr : $dst)>; // For long mode implementation, see AVR equivalent with DLDREGS
+def : Pat<(i32(load (PCPUwrapper tglobaladdr : $dst))), (LDD tglobaladdr : $dst)>;
+def : Pat<(store i32 : $src, (PCPUwrapper tglobaladdr : $dst)), (STD i32 : $src, tglobaladdr : $dst)>;

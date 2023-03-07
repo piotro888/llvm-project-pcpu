@@ -29,7 +29,8 @@ enum {
   CALL, // abstract CALL
   RET,  // RET flag
   CMP, // compare two operands, set FREG
-  BR_CC, // Conditional jump
+  BR_CC, // Conditional jump,
+  WRAPPER, // Wraps TargetConstantPool, TargetExternalSymbol, and TargetGlobalAddress.
 };
 } // namespace PCPUISD
 
@@ -51,7 +52,7 @@ public:
   // SDValue LowerConstantPool(SDValue Op, SelectionDAG &DAG) const;
   // SDValue LowerDYNAMIC_STACKALLOC(SDValue Op, SelectionDAG &DAG) const;
   // SDValue LowerFRAMEADDR(SDValue Op, SelectionDAG &DAG) const;
-  // SDValue LowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
   // SDValue LowerJumpTable(SDValue Op, SelectionDAG &DAG) const;
   // SDValue LowerMUL(SDValue Op, SelectionDAG &DAG) const;
   // SDValue LowerRETURNADDR(SDValue Op, SelectionDAG &DAG) const;

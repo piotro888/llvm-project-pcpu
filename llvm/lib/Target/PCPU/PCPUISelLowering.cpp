@@ -75,6 +75,8 @@ PCPUTargetLowering::PCPUTargetLowering(const TargetMachine &TM,
 
   setOperationAction(ISD::SELECT, MVT::i32, Expand);
 
+  setOperationAction(ISD::GlobalAddress, MVT::i32, Custom);
+
   setStackPointerRegisterToSaveRestore(PCPU::SP);
 }
 
@@ -83,6 +85,8 @@ SDValue PCPUTargetLowering::LowerOperation(SDValue Op,
   switch (Op.getOpcode()) {
   case ISD::BR_CC:
     return LowerBR_CC(Op, DAG);
+  case ISD::GlobalAddress:
+    return LowerGlobalAddress(Op, DAG);
   default:
     llvm_unreachable("unimplemented operand");
   }
@@ -544,4 +548,17 @@ SDValue PCPUTargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const {
 
   return DAG.getNode(PCPUISD::BR_CC, DL, Op.getValueType(), Chain, Dest,
                      TargetCC, Flag);
+}
+
+SDValue PCPUTargetLowering::LowerGlobalAddress(SDValue Op,
+                                              SelectionDAG &DAG) const {
+  auto DL = DAG.getDataLayout();
+
+  const GlobalValue *GV = cast<GlobalAddressSDNode>(Op)->getGlobal();
+  int64_t Offset = cast<GlobalAddressSDNode>(Op)->getOffset();
+
+  // Create the TargetGlobalAddress node, folding in the constant offset.
+  SDValue Result =
+      DAG.getTargetGlobalAddress(GV, SDLoc(Op), getPointerTy(DL), Offset);
+  return DAG.getNode(PCPUISD::WRAPPER, SDLoc(Op), getPointerTy(DL), Result);
 }
