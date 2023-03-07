@@ -107,22 +107,86 @@ def : Pat<(i32 (load i32:$rs1)),
 
 let Defs = [FREG] in {
   def ADD :
-    PCPUFrr<0b0000111,  
+    PCPUFrr<0b0000111,
       (outs GPR: $rd),
       (ins GPR: $rs1, GPR: $rs2),
       "add $rd, $rs1, $rs2",
-      [(set i32 : $rd, 
+      [(set i32 : $rd,
         (add i32 : $rs1, i32 : $rs2))]
-    >;
+  >;
 
   def ADI :
-    PCPUFri<0b0001000,  
+    PCPUFri<0b0001000,
       (outs GPR: $rd),
       (ins GPR: $rs1, i32imm: $imm),
       "adi $rd, $rs1, $imm",
-      [(set i32 : $rd, 
+      [(set i32 : $rd,
         (add i32 : $rs1, imm : $imm))]
-    >;
+  >;
+
+  // TODO::ADC, SUC
+  def SUB :
+    PCPUFrr<0b0001010,
+      (outs GPR: $rd),
+      (ins GPR: $rs1, GPR: $rs2),
+      "sub $rd, $rs1, $rs2",
+      [(set i32 : $rd,
+        (sub i32 : $rs1, i32 : $rs2))]
+  >;
+
+  def AND :
+    PCPUFrr<0b0010011,
+      (outs GPR: $rd),
+      (ins GPR: $rs1, GPR: $rs2),
+      "and $rd, $rs1, $rs2",
+      [(set i32 : $rd,
+        (sub i32 : $rs1, i32 : $rs2))]
+  >;
+  
+  def ORR :
+    PCPUFrr<0b0010100,
+      (outs GPR: $rd),
+      (ins GPR: $rs1, GPR: $rs2),
+      "orr $rd, $rs1, $rs2",
+      [(set i32 : $rd,
+        (or i32 : $rs1, i32 : $rs2))]
+  >;
+  
+  def XOR :
+    PCPUFrr<0b0010101,
+      (outs GPR: $rd),
+      (ins GPR: $rs1, GPR: $rs2),
+      "xor $rd, $rs1, $rs2",
+      [(set i32 : $rd,
+        (xor i32 : $rs1, i32 : $rs2))]
+  >;
+  
+  def ANI :
+    PCPUFri<0b0010110,
+      (outs GPR: $rd),
+      (ins GPR: $rs1, i32imm: $imm),
+      "ani $rd, $rs1, $imm",
+      [(set i32 : $rd,
+        (and i32 : $rs1, imm : $imm))]
+  >;
+
+  def ORI :
+    PCPUFri<0b0010111,
+      (outs GPR: $rd),
+      (ins GPR: $rs1, i32imm: $imm),
+      "ori $rd, $rs1, $imm",
+      [(set i32 : $rd,
+        (or i32 : $rs1, imm : $imm))]
+  >;
+  
+  def XOI :
+    PCPUFri<0b0011000,
+      (outs GPR: $rd),
+      (ins GPR: $rs1, i32imm: $imm),
+      "xoi $rd, $rs1, $imm",
+      [(set i32 : $rd,
+        (xor i32 : $rs1, imm : $imm))]
+  >;
 }
 
 //===----------------------------------------------------------------------===//
