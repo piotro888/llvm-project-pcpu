@@ -27,7 +27,7 @@ protected:
 public:
   explicit PCPUFrameLowering(const PCPUSubtarget &Subtarget)
       : TargetFrameLowering(StackGrowsDown,
-                            /*StackAlignment=*/Align(4),
+                            /*StackAlignment=*/Align(2),
                             /*LocalAreaOffset=*/0),
         STI(Subtarget) {}
 

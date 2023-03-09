@@ -133,7 +133,7 @@ PCPUAsmBackend::getFixupKindInfo(MCFixupKind Kind) const {
       //   no bits are set in the fixup range.
       //
       // name          offset bits flags
-      {"FIXUP_PCPU_NONE", 0, 32, 0}
+      {"FIXUP_PCPU_NONE", 0, 16, 0}
   };    
 
   if (Kind < FirstTargetFixupKind)

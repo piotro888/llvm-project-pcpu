@@ -100,7 +100,7 @@ void PCPUDAGToDAGISel::Select(SDNode *Node) {
 
 void PCPUDAGToDAGISel::selectFrameIndex(SDNode *Node) {
   SDLoc DL(Node);
-  SDValue Imm = CurDAG->getTargetConstant(0, DL, MVT::i32);
+  SDValue Imm = CurDAG->getTargetConstant(0, DL, MVT::i16);
   int FI = cast<FrameIndexSDNode>(Node)->getIndex();
   EVT VT = Node->getValueType(0);
   SDValue TFI = CurDAG->getTargetFrameIndex(FI, VT);

@@ -33,7 +33,7 @@ void PCPUFrameLowering::determineFrameLayout(MachineFunction &MF) const {
   
   // increment frame size because of RCA stored in prologue at offset=0
   // correction because compiler thinks that this is not an object on our frame
-  FrameSize += 4; 
+  FrameSize += 2; 
 
   // Get the alignment.
   Align StackAlign =
@@ -87,7 +87,7 @@ void PCPUFrameLowering::emitPrologue(MachineFunction &MF,
   BuildMI(MBB, MBBI, DL, PII.get(PCPU::STO))
       .addReg(PCPU::FP)
       .addReg(PCPU::SP)
-      .addImm(-4)
+      .addImm(-2)
       .setMIFlag(MachineInstr::FrameSetup);
 
   // Generate new FP
@@ -125,7 +125,7 @@ void PCPUFrameLowering::emitEpilogue(MachineFunction & /*MF*/,
   // Restore the frame pointer from the stack.
   BuildMI(MBB, MBBI, DL, PII.get(PCPU::LDO), PCPU::FP)
       .addReg(PCPU::SP)
-      .addImm(-4);
+      .addImm(-2);
 
   // Restore RCA (PC)
   BuildMI(MBB, MBBI, DL, PII.get(PCPU::LDO), PCPU::RCA)
@@ -141,13 +141,13 @@ void PCPUFrameLowering::determineCalleeSaves(MachineFunction &MF,
   MachineFrameInfo &MFI = MF.getFrameInfo();
   int Offset = 0; // Alloc first @ SP. (Offsets for registers in ISelLowering for this to work and call frame calc)
 
-  // Reserve 4 bytes for the saved RCA(PC)
-  MFI.CreateFixedObject(4, Offset, true);
-  Offset -= 4;
+  // Reserve 2 bytes for the saved RCA(PC)
+  MFI.CreateFixedObject(2, Offset, true);
+  Offset -= 2;
 
-  // Reserve 4 bytes for the saved FP
-  MFI.CreateFixedObject(4, Offset, true);
-  Offset -= 4;
+  // Reserve 2 bytes for the saved FP
+  MFI.CreateFixedObject(2, Offset, true);
+  Offset -= 2;
 }
 
 bool PCPUFrameLowering::hasFP(const MachineFunction &MF) const {

@@ -60,22 +60,22 @@ PCPUTargetLowering::PCPUTargetLowering(const TargetMachine &TM,
                                          const PCPUSubtarget &STI)
     : TargetLowering(TM) {
   // Set up the register classes.
-  addRegisterClass(MVT::i32, &PCPU::GPRRegClass);
+  addRegisterClass(MVT::i16, &PCPU::GPRRegClass);
 
   // Compute derived properties from the register classes
   TRI = STI.getRegisterInfo();
   computeRegisterProperties(TRI);
 
   // Use PCPU branch codes
-  setOperationAction(ISD::BR_CC, MVT::i32, Custom);
+  setOperationAction(ISD::BR_CC, MVT::i16, Custom);
 
   // Expand complex branches (to sub ops like BR_CC)
   setOperationAction(ISD::BR_JT, MVT::Other, Expand);
   setOperationAction(ISD::BRCOND, MVT::Other, Expand);
 
-  setOperationAction(ISD::SELECT, MVT::i32, Expand);
+  setOperationAction(ISD::SELECT, MVT::i16, Expand);
 
-  setOperationAction(ISD::GlobalAddress, MVT::i32, Custom);
+  setOperationAction(ISD::GlobalAddress, MVT::i16, Custom);
 
   setStackPointerRegisterToSaveRestore(PCPU::SP);
 }
@@ -169,7 +169,7 @@ SDValue PCPUTargetLowering::LowerCCCCallTo(
 
     int FI = MFI.CreateStackObject(Size, Alignment, false);
     SDValue FIPtr = DAG.getFrameIndex(FI, getPointerTy(DAG.getDataLayout()));
-    SDValue SizeNode = DAG.getConstant(Size, DL, MVT::i32);
+    SDValue SizeNode = DAG.getConstant(Size, DL, MVT::i16);
 
     Chain = DAG.getMemcpy(Chain, DL, FIPtr, Arg, SizeNode, Alignment,
                           /*IsVolatile=*/false,
@@ -225,7 +225,7 @@ SDValue PCPUTargetLowering::LowerCCCCallTo(
 
       SDValue PtrOff =
           DAG.getNode(ISD::ADD, DL, getPointerTy(DAG.getDataLayout()), StackPtr,
-                      DAG.getIntPtrConstant(VA.getLocMemOffset()+4, DL));
+                      DAG.getIntPtrConstant(VA.getLocMemOffset()+2, DL));
 
       MemOpChains.push_back(
           DAG.getStore(Chain, DL, Arg, PtrOff, MachinePointerInfo()));
@@ -357,12 +357,12 @@ SDValue PCPUTargetLowering::LowerCCCArguments(
       // Arguments passed in registers
       EVT RegVT = VA.getLocVT();
       switch (RegVT.getSimpleVT().SimpleTy) {
-      case MVT::i32: {
+      case MVT::i16: {
         Register VReg = RegInfo.createVirtualRegister(&PCPU::GPRRegClass);
         RegInfo.addLiveIn(VA.getLocReg(), VReg);
         SDValue ArgValue = DAG.getCopyFromReg(Chain, DL, VReg, RegVT);
 
-        // If this is an 8/16-bit value, it is really passed promoted to 32
+        // If this is an 8-bit value, it is really passed promoted to 16
         // bits. Insert an assert[sz]ext to capture this, then truncate to the
         // right size.
         if (VA.getLocInfo() == CCValAssign::SExt)
@@ -389,18 +389,18 @@ SDValue PCPUTargetLowering::LowerCCCArguments(
       // Load the argument to a virtual register
       unsigned ObjSize = VA.getLocVT().getSizeInBits() / 8;
       // Check that the argument fits in stack slot
-      if (ObjSize > 4) {
+      if (ObjSize > 2) {
         errs() << "LowerFormalArguments Unhandled argument type: "
                << EVT(VA.getLocVT()).getEVTString() << "\n";
       }
       // Create the frame index object for this incoming parameter...
-      // +4 because SP points to first free address, which we cant take, decrement it by one index
+      // +2 because SP points to first free address, which we cant take, decrement it by one index
       // collison with locals is fixed at computing stack size in lowering
-      int FI = MFI.CreateFixedObject(ObjSize, VA.getLocMemOffset()+4, true);
+      int FI = MFI.CreateFixedObject(ObjSize, VA.getLocMemOffset()+2, true);
 
       // Create the SelectionDAG nodes corresponding to a load
       // from this parameter
-      SDValue FIN = DAG.getFrameIndex(FI, MVT::i32);
+      SDValue FIN = DAG.getFrameIndex(FI, MVT::i16);
       InVals.push_back(DAG.getLoad(
           VA.getLocVT(), DL, Chain, FIN,
           MachinePointerInfo::getFixedStack(DAG.getMachineFunction(), FI)));
@@ -413,7 +413,7 @@ SDValue PCPUTargetLowering::LowerCCCArguments(
   // if (MF.getFunction().hasStructRetAttr()) {
   //   Register Reg = LanaiMFI->getSRetReturnReg();
   //   if (!Reg) {
-  //     Reg = MF.getRegInfo().createVirtualRegister(getRegClassFor(MVT::i32));
+  //     Reg = MF.getRegInfo().createVirtualRegister(getRegClassFor(MVT::i16));
   //     LanaiMFI->setSRetReturnReg(Reg);
   //   }
   //   SDValue Copy = DAG.getCopyToReg(DAG.getEntryNode(), DL, Reg, InVals[0]);
@@ -543,7 +543,7 @@ SDValue PCPUTargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const {
   SDLoc DL(Op);
 
   LPCC::CondCode CC = IntCondCCodeToICC(Cond, DL, RHS, DAG);
-  SDValue TargetCC = DAG.getConstant(CC, DL, MVT::i32);
+  SDValue TargetCC = DAG.getConstant(CC, DL, MVT::i16);
   SDValue Flag = DAG.getNode(PCPUISD::CMP, DL, MVT::Glue, LHS, RHS, TargetCC);
 
   return DAG.getNode(PCPUISD::BR_CC, DL, Op.getValueType(), Chain, Dest,

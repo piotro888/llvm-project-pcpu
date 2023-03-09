@@ -17,14 +17,14 @@ include "PCPUInstrFormats.td"
 //===----------------------------------------------------------------------===//
 
 //  These are target-independent nodes, but have target-specific formats.
-def SDT_PCPUCall         : SDTypeProfile<0, -1, [SDTCisVT<0, i32>]>;
-def SDT_PCPUCallSeqStart : SDCallSeqStart<[SDTCisVT<0, i32>,
-                                            SDTCisVT<1, i32>]>;
-def SDT_PCPUCallSeqEnd   : SDCallSeqEnd<[SDTCisVT<0, i32>,
-                                          SDTCisVT<1, i32>]>;
+def SDT_PCPUCall         : SDTypeProfile<0, -1, [SDTCisVT<0, i16>]>;
+def SDT_PCPUCallSeqStart : SDCallSeqStart<[SDTCisVT<0, i16>,
+                                            SDTCisVT<1, i16>]>;
+def SDT_PCPUCallSeqEnd   : SDCallSeqEnd<[SDTCisVT<0, i16>,
+                                          SDTCisVT<1, i16>]>;
 def SDT_PCPUCmp : SDTypeProfile<0, 2, [SDTCisInt<0>, SDTCisSameAs<0, 1>]>;
 def SDT_PCPUBrcc : SDTypeProfile<0,  2, [SDTCisVT<0, OtherVT>,
-                                        SDTCisVT<1, i32>]>;
+                                        SDTCisVT<1, i16>]>;
 def SDT_PCPUWrapper : SDTypeProfile<1, 1, [SDTCisSameAs<0, 1>, SDTCisPtrTy<0>]>;
 
 // Nodes
@@ -42,12 +42,12 @@ def PCPUbrcc : SDNode<"PCPUISD::BR_CC", SDT_PCPUBrcc, [SDNPHasChain, SDNPInGlue]
 def PCPUwrapper : SDNode<"PCPUISD::WRAPPER", SDT_PCPUWrapper>;
 
 // Types
-def CallTarget : Operand<i32>;
+def CallTarget : Operand<i16>;
 // Branch targets have OtherVT type.
 def brtarget : Operand<OtherVT> {
   let EncoderMethod = "getBranchTargetOpValue";
 }
-def CCOp : Operand<i32> {
+def CCOp : Operand<i16> {
   let PrintMethod = "printCCOperand";
 }
 
@@ -65,9 +65,9 @@ def MOV : PCPUFr1<0b0000001,
 let isReMaterializable = 1, isAsCheapAsAMove = 1 in {
 def LDI : PCPUFi<0b0000100,
     (outs GPR: $rd),
-    (ins i32imm: $imm),
+    (ins i16imm: $imm),
     "ldi $rd, $imm",
-    [(set i32 : $rd, imm : $imm)] // <<<<< bug was here imm was i32
+    [(set i16 : $rd, imm : $imm)] // <<<<< bug was here imm was i16
   >;
 }
 
@@ -84,39 +84,39 @@ class LoadOP <bits<7> op, dag outs, dag ins, string asmstr, list<dag> pattern> :
 }
 
 def STD: StoreOP<0b0000101,
-  (ins GPR: $rs1, i32imm: $imm),
+  (ins GPR: $rs1, i16imm: $imm),
   "std $rs1, $imm",
-  [(store i32 : $rs1, imm : $imm)]> {
+  [(store i16 : $rs1, imm : $imm)]> {
     let rs2 = 0;
 }
 
 def STO: StoreOP<0b0000110,
-  (ins GPR: $rs1, GPR: $rs2, i32imm: $imm),
+  (ins GPR: $rs1, GPR: $rs2, i16imm: $imm),
   "sto $rs1, $rs2, $imm",
-  [(store i32 : $rs1, (add i32 : $rs2, imm : $imm))]>;
+  [(store i16 : $rs1, (add i16 : $rs2, imm : $imm))]>;
 
 // (store [reg]) -> (store [reg]+0)
-def : Pat<(store i32:$rs1, i32:$rs2),
-          (STO i32:$rs1, i32:$rs2, (i32 0))>;
+def : Pat<(store i16:$rs1, i16:$rs2),
+          (STO i16:$rs1, i16:$rs2, (i16 0))>;
 
 def LDD : LoadOP<0b0000010,
   (outs GPR: $rd),
-  (ins i32imm: $imm),
+  (ins i16imm: $imm),
   "ldd $rd, $imm",
-  [(set i32 : $rd, (load imm : $imm))]> {
+  [(set i16 : $rd, (load imm : $imm))]> {
     let rs1 = 0;
 }
 
 def LDO : LoadOP<0b0000011,
     (outs GPR: $rd),
-    (ins GPR: $rs1, i32imm: $imm),
+    (ins GPR: $rs1, i16imm: $imm),
     "ldo $rd, $rs1, $imm",
-    [(set i32 : $rd, (load (add i32 : $rs1, imm : $imm)))]
+    [(set i16 : $rd, (load (add i16 : $rs1, imm : $imm)))]
 >;
 
 // (load [reg]) -> (load [reg]+0)
-def : Pat<(i32 (load i32:$rs1)),
-          (LDO i32:$rs1, (i32 0))>;
+def : Pat<(i16 (load i16:$rs1)),
+          (LDO i16:$rs1, (i16 0))>;
 
 //===----------------------------------------------------------------------===//
 // ARTIHMETIC instructions
@@ -128,17 +128,17 @@ let Defs = [FREG] in {
       (outs GPR: $rd),
       (ins GPR: $rs1, GPR: $rs2),
       "add $rd, $rs1, $rs2",
-      [(set i32 : $rd,
-        (add i32 : $rs1, i32 : $rs2))]
+      [(set i16 : $rd,
+        (add i16 : $rs1, i16 : $rs2))]
   >;
 
   def ADI :
     PCPUFri<0b0001000,
       (outs GPR: $rd),
-      (ins GPR: $rs1, i32imm: $imm),
+      (ins GPR: $rs1, i16imm: $imm),
       "adi $rd, $rs1, $imm",
-      [(set i32 : $rd,
-        (add i32 : $rs1, imm : $imm))]
+      [(set i16 : $rd,
+        (add i16 : $rs1, imm : $imm))]
   >;
 
   // TODO::ADC, SUC
@@ -147,8 +147,8 @@ let Defs = [FREG] in {
       (outs GPR: $rd),
       (ins GPR: $rs1, GPR: $rs2),
       "sub $rd, $rs1, $rs2",
-      [(set i32 : $rd,
-        (sub i32 : $rs1, i32 : $rs2))]
+      [(set i16 : $rd,
+        (sub i16 : $rs1, i16 : $rs2))]
   >;
 
   def AND :
@@ -156,8 +156,8 @@ let Defs = [FREG] in {
       (outs GPR: $rd),
       (ins GPR: $rs1, GPR: $rs2),
       "and $rd, $rs1, $rs2",
-      [(set i32 : $rd,
-        (sub i32 : $rs1, i32 : $rs2))]
+      [(set i16 : $rd,
+        (sub i16 : $rs1, i16 : $rs2))]
   >;
   
   def ORR :
@@ -165,8 +165,8 @@ let Defs = [FREG] in {
       (outs GPR: $rd),
       (ins GPR: $rs1, GPR: $rs2),
       "orr $rd, $rs1, $rs2",
-      [(set i32 : $rd,
-        (or i32 : $rs1, i32 : $rs2))]
+      [(set i16 : $rd,
+        (or i16 : $rs1, i16 : $rs2))]
   >;
   
   def XOR :
@@ -174,35 +174,35 @@ let Defs = [FREG] in {
       (outs GPR: $rd),
       (ins GPR: $rs1, GPR: $rs2),
       "xor $rd, $rs1, $rs2",
-      [(set i32 : $rd,
-        (xor i32 : $rs1, i32 : $rs2))]
+      [(set i16 : $rd,
+        (xor i16 : $rs1, i16 : $rs2))]
   >;
   
   def ANI :
     PCPUFri<0b0010110,
       (outs GPR: $rd),
-      (ins GPR: $rs1, i32imm: $imm),
+      (ins GPR: $rs1, i16imm: $imm),
       "ani $rd, $rs1, $imm",
-      [(set i32 : $rd,
-        (and i32 : $rs1, imm : $imm))]
+      [(set i16 : $rd,
+        (and i16 : $rs1, imm : $imm))]
   >;
 
   def ORI :
     PCPUFri<0b0010111,
       (outs GPR: $rd),
-      (ins GPR: $rs1, i32imm: $imm),
+      (ins GPR: $rs1, i16imm: $imm),
       "ori $rd, $rs1, $imm",
-      [(set i32 : $rd,
-        (or i32 : $rs1, imm : $imm))]
+      [(set i16 : $rd,
+        (or i16 : $rs1, imm : $imm))]
   >;
   
   def XOI :
     PCPUFri<0b0011000,
       (outs GPR: $rd),
-      (ins GPR: $rs1, i32imm: $imm),
+      (ins GPR: $rs1, i16imm: $imm),
       "xoi $rd, $rs1, $imm",
-      [(set i32 : $rd,
-        (xor i32 : $rs1, imm : $imm))]
+      [(set i16 : $rd,
+        (xor i16 : $rs1, imm : $imm))]
   >;
 }
 
@@ -215,14 +215,14 @@ let rd = 0, Defs = [FREG] in {
               (outs), 
               (ins GPR: $rs1, GPR: $rs2),
               "cmp $rs1, $rs2",
-              [(PCPUcmp i32:$rs1, i32:$rs2)]
+              [(PCPUcmp i16:$rs1, i16:$rs2)]
   >;
 
   def CMI: PCPUFri<0b0001101,
               (outs),
-              (ins GPR: $rs1, i32imm: $imm),
+              (ins GPR: $rs1, i16imm: $imm),
               "cmp $rs1, $imm",
-              [(PCPUcmp i32:$rs1, (i32 imm:$imm))]
+              [(PCPUcmp i16:$rs1, (i16 imm:$imm))]
   >; 
 }
 
@@ -245,10 +245,10 @@ def : Pat<(PCPUcall tglobaladdr:$dst), (CALLi tglobaladdr:$dst)>;
 def : Pat<(PCPUcall texternalsym:$dst), (CALLi texternalsym:$dst)>;
 
 let Defs = [SP], Uses = [SP] in {
-  def ADJCALLSTACKDOWN : Pseudo<(outs), (ins i32imm:$amt1, i32imm:$amt2),
+  def ADJCALLSTACKDOWN : Pseudo<(outs), (ins i16imm:$amt1, i16imm:$amt2),
                                 "#ADJCALLSTACKDOWN $amt1 $amt2",
                                 [(PCPUcallSeqStart timm:$amt1, timm:$amt2)]>;
-  def ADJCALLSTACKUP   : Pseudo<(outs), (ins i32imm:$amt1, i32imm:$amt2),
+  def ADJCALLSTACKUP   : Pseudo<(outs), (ins i16imm:$amt1, i16imm:$amt2),
                                 "#ADJCALLSTACKUP $amt1 $amt2",
                                 [(PCPUcallSeqEnd timm:$amt1, timm:$amt2)]>;
 }
@@ -281,6 +281,6 @@ let isBranch = 1, isTerminator = 1 in {
 //===----------------------------------------------------------------------===//
 
 // GlobalAddress
-def : Pat<(i32(PCPUwrapper tglobaladdr : $dst)), (LDI tglobaladdr : $dst)>; // For long mode implementation, see AVR equivalent with DLDREGS
-def : Pat<(i32(load (PCPUwrapper tglobaladdr : $dst))), (LDD tglobaladdr : $dst)>;
-def : Pat<(store i32 : $src, (PCPUwrapper tglobaladdr : $dst)), (STD i32 : $src, tglobaladdr : $dst)>;
+def : Pat<(i16(PCPUwrapper tglobaladdr : $dst)), (LDI tglobaladdr : $dst)>; // For long mode implementation, see AVR equivalent with DLDREGS
+def : Pat<(i16(load (PCPUwrapper tglobaladdr : $dst))), (LDD tglobaladdr : $dst)>;
+def : Pat<(store i16 : $src, (PCPUwrapper tglobaladdr : $dst)), (STD i16 : $src, tglobaladdr : $dst)>;

@@ -29,14 +29,17 @@ public:
   PCPUTargetInfo(const llvm::Triple &Triple, const TargetOptions &)
       : TargetInfo(Triple) {
     // Description string has to be kept in sync with backend.
-    resetDataLayout("e"        // Big endian
+    resetDataLayout("e"        // Little endian
                     "-m:e"     // ELF name manging
-                    "-p:32:32" // 32 bit pointers, 32 bit aligned
-                    "-i64:64"  // 64 bit integers, 64 bit aligned
-                    "-a:0:32"  // 32 bit alignment of objects of aggregate type
-                    "-n32"     // 32 bit native integer width
-                    "-S64"     // 64 bit natural stack alignment
+                    "-p:16:16" // 32 bit pointers, 32 bit aligned
+                    "-i16:16"  // 64 bit integers, 64 bit aligned
+                    "-a:0:16"  // 32 bit alignment of objects of aggregate type
+                    "-n16"     // 32 bit native integer width
+                    "-S16"     // 64 bit natural stack alignment
     );
+
+    // 16 bit integers
+    IntWidth = IntAlign = 16;
 
     // Setting RegParmMax equal to what mregparm was set to in the old
     // toolchain
@@ -46,7 +49,7 @@ public:
     // safely casting between pointers with different alignment requirements.
     // TODO: Remove this when there are no more cast align warnings on the
     // firmware.
-    MinGlobalAlign = 32;
+    MinGlobalAlign = 16;
   }
 
   void getTargetDefines(const LangOptions &Opts,
