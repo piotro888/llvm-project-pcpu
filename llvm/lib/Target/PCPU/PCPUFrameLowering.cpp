@@ -74,7 +74,7 @@ void PCPUFrameLowering::emitPrologue(MachineFunction &MF,
   
   determineFrameLayout(MF);
 
-  unsigned StackSize = MFI.getStackSize();
+  int StackSize = MFI.getStackSize();
 
   // Push JAL R6 PC
   BuildMI(MBB, MBBI, DL, PII.get(PCPU::STO))
@@ -99,7 +99,7 @@ void PCPUFrameLowering::emitPrologue(MachineFunction &MF,
   if (StackSize != 0) {
     BuildMI(MBB, MBBI, DL, PII.get(PCPU::ADI), PCPU::SP)
         .addReg(PCPU::SP)
-        .addImm(-StackSize)
+        .addImm(-StackSize) // signed
         .setMIFlag(MachineInstr::FrameSetup);
   }
 }
