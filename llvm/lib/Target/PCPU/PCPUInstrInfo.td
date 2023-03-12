@@ -117,6 +117,48 @@ def LDO : LoadOP<0b0000011,
 // (load [reg]) -> (load [reg]+0)
 def : Pat<(i16 (load i16:$rs1)),
           (LDO i16:$rs1, (i16 0))>;
+          
+def SD8: StoreOP<0b0000101,
+  (ins GPR: $rs1, i16imm: $imm),
+  "sd8 $rs1, $imm",
+  [(truncstorei8 i16 : $rs1, imm : $imm)]> {
+    let rs2 = 0;
+}
+
+def SO8: StoreOP<0b0000110,
+  (ins GPR: $rs1, GPR: $rs2, i16imm: $imm),
+  "so8 $rs1, $rs2, $imm",
+  [(truncstorei8 i16 : $rs1, (add i16 : $rs2, imm : $imm))]>;
+
+// (store [reg]) -> (store [reg]+0)
+def : Pat<(truncstorei8 i16:$rs1, i16:$rs2),
+          (SO8 i16:$rs1, i16:$rs2, (i16 0))>;
+
+def LD8 : LoadOP<0b0011111,
+  (outs GPR: $rd),
+  (ins i16imm: $imm),
+  "ld8 $rd, $imm",
+  [(set i16 : $rd, (zextloadi8 imm : $imm))]> {
+    let rs1 = 0;
+}
+
+def LO8 : LoadOP<0b0100000,
+    (outs GPR: $rd),
+    (ins GPR: $rs1, i16imm: $imm),
+    "lo8 $rd, $rs1, $imm",
+    [(set i16 : $rd, (zextloadi8 (add i16 : $rs1, imm : $imm)))]
+>;
+
+def : Pat<(i16 (zextloadi8 i16:$rs1)),
+          (LO8 i16:$rs1, (i16 0))>;
+
+/// anyext i8 -> L*8 (zext, to support SEXT i8 expand)
+def : Pat<(extloadi8 i16:$rs1),
+          (LO8 i16:$rs1, (i16 0))>;
+def : Pat<(extloadi8 (add i16:$rs1, imm:$imm)),
+          (LO8 i16:$rs1, imm:$imm)>;
+def : Pat<(extloadi8 imm:$addr),
+          (LD8 imm:$addr)>;
 
 //===----------------------------------------------------------------------===//
 // ARTIHMETIC instructions
@@ -203,6 +245,14 @@ let Defs = [FREG] in {
       "xoi $rd, $rs1, $imm",
       [(set i16 : $rd,
         (xor i16 : $rs1, imm : $imm))]
+  >;
+
+  def SEX : 
+    PCPUFr1<0b0100111,
+      (outs GPR: $rd),
+      (ins GPR: $rs1),
+      "sex $rd, $rs1",
+      [(set i16 : $rd, (sext_inreg i16 : $rs1, i8))]
   >;
 }
 
