@@ -23,6 +23,7 @@
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/StringSwitch.h"
 #include "llvm/CodeGen/CallingConvLower.h"
+#include "llvm/CodeGen/ISDOpcodes.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/MachineMemOperand.h"
@@ -73,7 +74,13 @@ PCPUTargetLowering::PCPUTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::BR_JT, MVT::Other, Expand);
   setOperationAction(ISD::BRCOND, MVT::Other, Expand);
 
+  // We dont have select or setcc operations.
   setOperationAction(ISD::SELECT, MVT::i16, Expand);
+  // Custom expand is better! => to SELECT_CC with consts
+  setOperationAction(ISD::SETCC, MVT::i16, Custom);
+
+  // Cannot automatically expand if select is exp -> pseudo
+  setOperationAction(ISD::SELECT_CC, MVT::i16, Custom);
 
   setOperationAction(ISD::GlobalAddress, MVT::i16, Custom);
 
@@ -100,6 +107,10 @@ SDValue PCPUTargetLowering::LowerOperation(SDValue Op,
     return LowerBR_CC(Op, DAG);
   case ISD::GlobalAddress:
     return LowerGlobalAddress(Op, DAG);
+  case ISD::SELECT_CC:
+    return LowerSELECT_CC(Op, DAG);
+  case ISD::SETCC:
+    return LowerSETCC(Op, DAG);
   default:
     llvm_unreachable("unimplemented operand");
   }
@@ -115,6 +126,10 @@ const char *PCPUTargetLowering::getTargetNodeName(unsigned Opcode) const {
     return "PCPUISD::CMP";
   case PCPUISD::BR_CC:
     return "PCPUISD::BR_CC";
+  case PCPUISD::WRAPPER:
+    return "PCPUISD::WRAPPER";
+  case PCPUISD::SELECT_CC:
+    return "PCPUISD::SELECT_CC";
   default:
     return nullptr;
   }
@@ -338,7 +353,7 @@ SDValue PCPUTargetLowering::LowerFormalArguments(
     SDValue Chain, CallingConv::ID CallConv, bool IsVarArg,
     const SmallVectorImpl<ISD::InputArg> &Ins, const SDLoc &DL,
     SelectionDAG &DAG, SmallVectorImpl<SDValue> &InVals) const {
-  
+
   if (CallConv != CallingConv::C)
     report_fatal_error("Unsupported calling convention");
   return LowerCCCArguments(Chain, CallConv, IsVarArg, Ins, DL, DAG, InVals);
@@ -504,6 +519,10 @@ PCPUTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
                      ArrayRef<SDValue>(&RetOps[0], RetOps.size()));
 }
 
+//===----------------------------------------------------------------------===//
+//                             Custom Lowerings
+//===----------------------------------------------------------------------===//
+
 // Translate ISD cond code into PCPU branch code
 static LPCC::CondCode IntCondCCodeToICC(SDValue CC, const SDLoc &DL,
                                         SDValue &RHS, SelectionDAG &DAG) {
@@ -575,3 +594,106 @@ SDValue PCPUTargetLowering::LowerGlobalAddress(SDValue Op,
       DAG.getTargetGlobalAddress(GV, SDLoc(Op), getPointerTy(DL), Offset);
   return DAG.getNode(PCPUISD::WRAPPER, SDLoc(Op), getPointerTy(DL), Result);
 }
+
+
+SDValue PCPUTargetLowering::LowerSETCC(SDValue Op, SelectionDAG &DAG) const {
+  SDValue LHS = Op.getOperand(0);
+  SDValue RHS = Op.getOperand(1);
+  SDValue CC = Op.getOperand(2);
+  SDLoc DL(Op);
+
+  // SETCC is just a SELECT_CC(0, 1, CC). Custom expand eliminates need for LookThroughSetCC,
+  // which eliminates additonal CMP in SELECT_CC from automatic Expand (it creates extra CMP
+  // glued to SELECT_CC(0,1,CC) producing one additonal compare
+
+  SDValue Flag = DAG.getNode(PCPUISD::CMP, DL, MVT::Glue, LHS, RHS);
+  LPCC::CondCode PCPUCC = IntCondCCodeToICC(CC, DL, RHS, DAG);
+
+  SDValue TrueV = DAG.getConstant(1, DL, Op.getValueType());
+  SDValue FalseV = DAG.getConstant(0, DL, Op.getValueType());
+
+  return DAG.getNode(PCPUISD::SELECT_CC, DL, TrueV.getValueType(), TrueV, FalseV,
+        DAG.getConstant(PCPUCC, DL, MVT::i16), Flag);
+}
+
+SDValue PCPUTargetLowering::LowerSELECT_CC(SDValue Op, SelectionDAG &DAG) const {
+  SDValue LHS = Op.getOperand(0);
+  SDValue RHS = Op.getOperand(1);
+  SDValue CC = Op.getOperand(4);
+  SDValue TrueVal = Op.getOperand(2);
+  SDValue FalseVal = Op.getOperand(3);
+  SDLoc DL(Op);
+
+  SDValue Flag = DAG.getNode(PCPUISD::CMP, DL, MVT::Glue, LHS, RHS);
+  LPCC::CondCode TCC = IntCondCCodeToICC(CC, DL, RHS, DAG);
+
+  return DAG.getNode(PCPUISD::SELECT_CC, DL, TrueVal.getValueType(), TrueVal, FalseVal,
+        DAG.getConstant(TCC, DL, MVT::i16), Flag);
+}
+
+MachineBasicBlock* PCPUTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
+                                                 MachineBasicBlock *BB) const {
+  switch (MI.getOpcode()) {
+  default: llvm_unreachable("Unknown custom inserter!");
+  case PCPU::SELECT_CC_PSEUDO:
+    return expandSelectCC(MI, BB);
+  }
+}
+
+MachineBasicBlock* PCPUTargetLowering::expandSelectCC(MachineInstr &MI, MachineBasicBlock *BB) const {
+  const PCPUInstrInfo &TII = (const PCPUInstrInfo &)*MI.getParent()
+                                ->getParent()
+                                ->getSubtarget()
+                                .getInstrInfo();
+  DebugLoc dl = MI.getDebugLoc();
+  unsigned CC = (LPCC::CondCode)MI.getOperand(3).getImm();
+
+  // To "insert" a SELECT_CC instruction, we actually have to insert the
+  // triangle control-flow pattern. The incoming instruction knows the
+  // destination vreg to set, the condition code register to branch on, the
+  // true/false values to select between, and the condition code for the branch.
+  //
+  // We produce the following control flow:
+  //     ThisMBB
+  //     |  \
+  //     |  IfFalseMBB
+  //     | /
+  //    SinkMBB
+  const BasicBlock *LLVM_BB = BB->getBasicBlock();
+  MachineFunction::iterator It = ++BB->getIterator();
+
+  MachineBasicBlock *ThisMBB = BB;
+  MachineFunction *F = BB->getParent();
+  MachineBasicBlock *IfFalseMBB = F->CreateMachineBasicBlock(LLVM_BB);
+  MachineBasicBlock *SinkMBB = F->CreateMachineBasicBlock(LLVM_BB);
+  F->insert(It, IfFalseMBB);
+  F->insert(It, SinkMBB);
+
+  // Transfer the remainder of ThisMBB and its successor edges to SinkMBB.
+  SinkMBB->splice(SinkMBB->begin(), ThisMBB,
+                  std::next(MachineBasicBlock::iterator(MI)), ThisMBB->end());
+  SinkMBB->transferSuccessorsAndUpdatePHIs(ThisMBB);
+
+  // Set the new successors for ThisMBB.
+  ThisMBB->addSuccessor(IfFalseMBB);
+  ThisMBB->addSuccessor(SinkMBB);
+
+  BuildMI(ThisMBB, dl, TII.get(PCPU::JCOND))
+    .addMBB(SinkMBB)
+    .addImm(CC);
+
+  // IfFalseMBB just falls through to SinkMBB.
+  IfFalseMBB->addSuccessor(SinkMBB);
+
+  // %Result = phi [ %TrueValue, ThisMBB ], [ %FalseValue, IfFalseMBB ]
+  BuildMI(*SinkMBB, SinkMBB->begin(), dl, TII.get(PCPU::PHI),
+          MI.getOperand(0).getReg())
+      .addReg(MI.getOperand(1).getReg())
+      .addMBB(ThisMBB)
+      .addReg(MI.getOperand(2).getReg())
+      .addMBB(IfFalseMBB);
+
+  MI.eraseFromParent(); // The pseudo instruction is gone now.
+  return SinkMBB;
+}
+

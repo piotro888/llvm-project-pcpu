@@ -31,6 +31,7 @@ enum {
   CMP, // compare two operands, set FREG
   BR_CC, // Conditional jump,
   WRAPPER, // Wraps TargetConstantPool, TargetExternalSymbol, and TargetGlobalAddress.
+  SELECT_CC, // Select one of two values based on conditon. Converted to pseudo
 };
 } // namespace PCPUISD
 
@@ -47,6 +48,9 @@ public:
   // DAG node.
   const char *getTargetNodeName(unsigned Opcode) const override;
 
+  MachineBasicBlock* EmitInstrWithCustomInserter(MachineInstr &MI,
+                                MachineBasicBlock *MBB) const override;
+
   // SDValue LowerBlockAddress(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerBR_CC(SDValue Op, SelectionDAG &DAG) const;
   // SDValue LowerConstantPool(SDValue Op, SelectionDAG &DAG) const;
@@ -56,8 +60,8 @@ public:
   // SDValue LowerJumpTable(SDValue Op, SelectionDAG &DAG) const;
   // SDValue LowerMUL(SDValue Op, SelectionDAG &DAG) const;
   // SDValue LowerRETURNADDR(SDValue Op, SelectionDAG &DAG) const;
-  // SDValue LowerSELECT_CC(SDValue Op, SelectionDAG &DAG) const;
-  // SDValue LowerSETCC(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerSELECT_CC(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerSETCC(SDValue Op, SelectionDAG &DAG) const;
   // SDValue LowerSHL_PARTS(SDValue Op, SelectionDAG &DAG) const;
   // SDValue LowerSRL_PARTS(SDValue Op, SelectionDAG &DAG) const;
   // SDValue LowerVASTART(SDValue Op, SelectionDAG &DAG) const;
@@ -85,6 +89,8 @@ public:
   //                                    const APInt &DemandedElts,
   //                                    const SelectionDAG &DAG,
   //                                    unsigned Depth = 0) const override;
+
+  MachineBasicBlock *expandSelectCC(MachineInstr &MI, MachineBasicBlock *BB) const;
 
 private:
   SDValue LowerCCCCallTo(SDValue Chain, SDValue Callee,

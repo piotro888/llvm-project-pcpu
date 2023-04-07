@@ -26,6 +26,8 @@ def SDT_PCPUCmp : SDTypeProfile<0, 2, [SDTCisInt<0>, SDTCisSameAs<0, 1>]>;
 def SDT_PCPUBrcc : SDTypeProfile<0,  2, [SDTCisVT<0, OtherVT>,
                                         SDTCisVT<1, i16>]>;
 def SDT_PCPUWrapper : SDTypeProfile<1, 1, [SDTCisSameAs<0, 1>, SDTCisPtrTy<0>]>;
+def SDT_PCPUSelectcc : SDTypeProfile<1,  3, [SDTCisSameAs<0, 1>,
+                                                  SDTCisSameAs<1, 2>,  SDTCisVT<3, i16>]>; 
 
 // Nodes
 def PCPUcall: SDNode<"PCPUISD::CALL", SDT_PCPUCall,
@@ -39,6 +41,7 @@ def PCPUret : SDNode<"PCPUISD::RET", SDTNone,
                 [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
 def PCPUcmp : SDNode<"PCPUISD::CMP", SDT_PCPUCmp, [SDNPOutGlue]>;
 def PCPUbrcc : SDNode<"PCPUISD::BR_CC", SDT_PCPUBrcc, [SDNPHasChain, SDNPInGlue]>;
+def PCPUselectcc : SDNode<"PCPUISD::SELECT_CC", SDT_PCPUSelectcc, [SDNPInGlue]>;
 def PCPUwrapper : SDNode<"PCPUISD::WRAPPER", SDT_PCPUWrapper>;
 
 // Types
@@ -346,6 +349,12 @@ let rd = 0, Defs = [FREG] in {
               "cmp $rs1, $imm",
               [(PCPUcmp i16:$rs1, (i16 imm:$imm))]
   >;
+}
+
+let Uses = [FREG], usesCustomInserter = 1 in {
+  def SELECT_CC_PSEUDO : Pseudo<(outs GPR:$dst), (ins GPR:$T, GPR:$F, i16imm:$cc),
+            "; SELECT_CC PSEUDO!",
+            [(set i16:$dst, (PCPUselectcc i16:$T, i16:$F, imm:$cc))]>;
 }
 
 //===----------------------------------------------------------------------===//
