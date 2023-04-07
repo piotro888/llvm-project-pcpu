@@ -77,6 +77,9 @@ PCPUTargetLowering::PCPUTargetLowering(const TargetMachine &TM,
 
   setOperationAction(ISD::GlobalAddress, MVT::i16, Custom);
 
+  setOperationAction(ISD::ROTL, MVT::i16, Expand);
+  setOperationAction(ISD::ROTR, MVT::i16, Expand);
+
   // Fix load extends
   for (MVT VT : MVT::integer_valuetypes()) {
     setLoadExtAction(ISD::EXTLOAD,  VT, MVT::i1,  Promote);
@@ -85,6 +88,8 @@ PCPUTargetLowering::PCPUTargetLowering(const TargetMachine &TM,
     setLoadExtAction(ISD::SEXTLOAD, VT, MVT::i8,  Expand);
   }
 
+  setOperationAction(ISD::UMUL_LOHI, MVT::i16, Expand);
+  // need to implelemt MULHU, MULHS
   setStackPointerRegisterToSaveRestore(PCPU::SP);
 }
 

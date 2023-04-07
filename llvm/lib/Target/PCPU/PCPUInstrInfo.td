@@ -117,15 +117,15 @@ def LDO : LoadOP<0b0000011,
 // (load [reg]) -> (load [reg]+0)
 def : Pat<(i16 (load i16:$rs1)),
           (LDO i16:$rs1, (i16 0))>;
-          
-def SD8: StoreOP<0b0000101,
+
+def SD8: StoreOP<0b0100001,
   (ins GPR: $rs1, i16imm: $imm),
   "sd8 $rs1, $imm",
   [(truncstorei8 i16 : $rs1, imm : $imm)]> {
     let rs2 = 0;
 }
 
-def SO8: StoreOP<0b0000110,
+def SO8: StoreOP<0b0100010,
   (ins GPR: $rs1, GPR: $rs2, i16imm: $imm),
   "so8 $rs1, $rs2, $imm",
   [(truncstorei8 i16 : $rs1, (add i16 : $rs2, imm : $imm))]>;
@@ -199,9 +199,9 @@ let Defs = [FREG] in {
       (ins GPR: $rs1, GPR: $rs2),
       "and $rd, $rs1, $rs2",
       [(set i16 : $rd,
-        (sub i16 : $rs1, i16 : $rs2))]
+        (and i16 : $rs1, i16 : $rs2))]
   >;
-  
+
   def ORR :
     PCPUFrr<0b0010100,
       (outs GPR: $rd),
@@ -210,7 +210,7 @@ let Defs = [FREG] in {
       [(set i16 : $rd,
         (or i16 : $rs1, i16 : $rs2))]
   >;
-  
+
   def XOR :
     PCPUFrr<0b0010101,
       (outs GPR: $rd),
@@ -219,7 +219,7 @@ let Defs = [FREG] in {
       [(set i16 : $rd,
         (xor i16 : $rs1, i16 : $rs2))]
   >;
-  
+
   def ANI :
     PCPUFri<0b0010110,
       (outs GPR: $rd),
@@ -237,7 +237,7 @@ let Defs = [FREG] in {
       [(set i16 : $rd,
         (or i16 : $rs1, imm : $imm))]
   >;
-  
+
   def XOI :
     PCPUFri<0b0011000,
       (outs GPR: $rd),
@@ -247,12 +247,84 @@ let Defs = [FREG] in {
         (xor i16 : $rs1, imm : $imm))]
   >;
 
-  def SEX : 
+  def SHL :
+    PCPUFrr<0b0011001,
+      (outs GPR: $rd),
+      (ins GPR: $rs1, GPR: $rs2),
+      "shl $rd, $rs1, $rs2",
+      [(set i16: $rd,
+         (shl i16 : $rs1, i16 : $rs2))]
+  >;
+
+  def SHR :
+    PCPUFrr<0b0011010,
+      (outs GPR: $rd),
+      (ins GPR: $rs1, GPR: $rs2),
+      "shr $rd, $rs1, $rs2",
+      [(set i16: $rd,
+         (srl i16 : $rs1, i16 : $rs2))]
+  >;
+
+  def SLI :
+    PCPUFri<0b0100011,
+      (outs GPR: $rd),
+      (ins GPR: $rs1, i16imm: $imm),
+      "sli $rd, $rs1, $imm",
+      [(set i16 : $rd,
+        (shl i16 : $rs1, imm : $imm))]
+  >;
+
+  def SRI :
+    PCPUFri<0b0100100,
+      (outs GPR: $rd),
+      (ins GPR: $rs1, i16imm: $imm),
+      "sri $rd, $rs1, $imm",
+      [(set i16 : $rd,
+        (srl i16 : $rs1, imm : $imm))]
+  >;
+
+  def SAR :
+    PCPUFrr<0b0100101,
+      (outs GPR: $rd),
+      (ins GPR: $rs1, GPR: $rs2),
+      "sar $rd, $rs1, $rs2",
+      [(set i16: $rd,
+         (sra i16 : $rs1, i16 : $rs2))]
+  >;
+
+  def SAI :
+    PCPUFri<0b0100110,
+      (outs GPR: $rd),
+      (ins GPR: $rs1, i16imm: $imm),
+      "sai $rd, $rs1, $imm",
+      [(set i16 : $rd,
+        (sra i16 : $rs1, imm : $imm))]
+  >;
+
+  def SEX :
     PCPUFr1<0b0100111,
       (outs GPR: $rd),
       (ins GPR: $rs1),
       "sex $rd, $rs1",
       [(set i16 : $rd, (sext_inreg i16 : $rs1, i8))]
+  >;
+
+  def MUL : // lower part mul
+    PCPUFrr<0b0011100,
+        (outs GPR: $rd),
+        (ins GPR: $rs1, GPR: $rs2),
+        "mul $rd, $rs1, $rs2",
+        [(set i16 : $rd,
+         (mul i16 : $rs1, i16 : $rs2))]
+  >;
+
+  def DIV :
+    PCPUFrr<0b0011101,
+        (outs GPR: $rd),
+        (ins GPR: $rs1, GPR: $rs2),
+        "div $rd, $rs1, $rs2",
+        [(set i16 : $rd,
+         (udiv i16 : $rs1, i16 : $rs2))]
   >;
 }
 
@@ -262,7 +334,7 @@ let Defs = [FREG] in {
 
 let rd = 0, Defs = [FREG] in {
   def CMP: PCPUFrr<0b0001100,
-              (outs), 
+              (outs),
               (ins GPR: $rs1, GPR: $rs2),
               "cmp $rs1, $rs2",
               [(PCPUcmp i16:$rs1, i16:$rs2)]
@@ -273,7 +345,7 @@ let rd = 0, Defs = [FREG] in {
               (ins GPR: $rs1, i16imm: $imm),
               "cmp $rs1, $imm",
               [(PCPUcmp i16:$rs1, (i16 imm:$imm))]
-  >; 
+  >;
 }
 
 //===----------------------------------------------------------------------===//
@@ -281,7 +353,7 @@ let rd = 0, Defs = [FREG] in {
 //===----------------------------------------------------------------------===//
 
 // JUMP AND LINK
-let isCall = 1, Uses = [SP], Defs = [RCA] in { //FP? 
+let isCall = 1, Uses = [SP], Defs = [RCA] in { //FP?
 let rd = 0x6, rs1=0 in {
 def CALLi : PCPUFr1<0b0001111,
               (outs), (ins CallTarget:$k),
