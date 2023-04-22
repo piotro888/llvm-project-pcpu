@@ -520,6 +520,27 @@ PCPUTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
 }
 
 //===----------------------------------------------------------------------===//
+//                             Misc
+//===----------------------------------------------------------------------===//
+
+std::pair<unsigned, const TargetRegisterClass *>
+PCPUTargetLowering::getRegForInlineAsmConstraint(const TargetRegisterInfo *TRI,
+                                                  StringRef Constraint,
+                                                  MVT VT) const {
+  if (Constraint.size() == 1)
+    // GCC Constraint Letters
+    switch (Constraint[0]) {
+    case 'r': // GENERAL_REGS
+      return std::make_pair(0U, &PCPU::GPRRegClass);
+    default:
+      break;
+    }
+
+  return TargetLowering::getRegForInlineAsmConstraint(TRI, Constraint, VT);
+}
+
+
+//===----------------------------------------------------------------------===//
 //                             Custom Lowerings
 //===----------------------------------------------------------------------===//
 
