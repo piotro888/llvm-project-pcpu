@@ -311,25 +311,34 @@ let Defs = [FREG] in {
       "sex $rd, $rs1",
       [(set i16 : $rd, (sext_inreg i16 : $rs1, i8))]
   >;
-
-  def MUL : // lower part mul
-    PCPUFrr<0b0011100,
-        (outs GPR: $rd),
-        (ins GPR: $rs1, GPR: $rs2),
-        "mul $rd, $rs1, $rs2",
-        [(set i16 : $rd,
-         (mul i16 : $rs1, i16 : $rs2))]
-  >;
-
-  def DIV :
-    PCPUFrr<0b0011101,
-        (outs GPR: $rd),
-        (ins GPR: $rs1, GPR: $rs2),
-        "div $rd, $rs1, $rs2",
-        [(set i16 : $rd,
-         (udiv i16 : $rs1, i16 : $rs2))]
-  >;
 }
+
+def MUL : // lower part mul
+  PCPUFrr<0b0011100,
+      (outs GPR: $rd),
+      (ins GPR: $rs1, GPR: $rs2),
+      "mul $rd, $rs1, $rs2",
+      [(set i16 : $rd,
+        (mul i16 : $rs1, i16 : $rs2))]
+>;
+
+def DIV :
+  PCPUFrr<0b0011101,
+      (outs GPR: $rd),
+      (ins GPR: $rs1, GPR: $rs2),
+      "div $rd, $rs1, $rs2",
+      [(set i16 : $rd,
+        (udiv i16 : $rs1, i16 : $rs2))]
+>;
+
+def MOD :
+  PCPUFrr<0b0101100,
+      (outs GPR: $rd),
+      (ins GPR: $rs1, GPR: $rs2),
+      "mod $rd, $rs1, $rs2",
+      [(set i16 : $rd,
+        (urem i16 : $rs1, i16 : $rs2))]
+>;
 
 //===----------------------------------------------------------------------===//
 // CMP instructions
