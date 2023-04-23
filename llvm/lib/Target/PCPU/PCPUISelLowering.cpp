@@ -73,6 +73,7 @@ PCPUTargetLowering::PCPUTargetLowering(const TargetMachine &TM,
   // Expand complex branches (to sub ops like BR_CC)
   setOperationAction(ISD::BR_JT, MVT::Other, Expand);
   setOperationAction(ISD::BRCOND, MVT::Other, Expand);
+  setOperationAction(ISD::BRIND, MVT::Other, Custom); // note: can be disabled by setting to custom
 
   // We dont have select or setcc operations.
   setOperationAction(ISD::SELECT, MVT::i16, Expand);
@@ -111,6 +112,8 @@ SDValue PCPUTargetLowering::LowerOperation(SDValue Op,
     return LowerSELECT_CC(Op, DAG);
   case ISD::SETCC:
     return LowerSETCC(Op, DAG);
+  case ISD::BRIND:
+    return LowerBRIND(Op, DAG);
   default:
     llvm_unreachable("unimplemented operand");
   }
@@ -722,3 +725,18 @@ MachineBasicBlock* PCPUTargetLowering::expandSelectCC(MachineInstr &MI, MachineB
   return SinkMBB;
 }
 
+SDValue PCPUTargetLowering::LowerBRIND(SDValue Op, SelectionDAG &DAG) const {
+  SDValue Chain = Op.getOperand(0);
+  SDValue Target = Op.getOperand(1);
+  SDLoc DL(Op);
+  
+  // srl tmp_reg, 0
+  // adi tmp_reg, tmp_reg, off+4??
+  // srs tmp_reg, 0
+  // nope, this is indirect branch and not relative branch! (and tmp_reg is hidden behind nodes! beautyfull)
+  // Target = DAG.getNode(ISD::ADD, DL, MVT::i16, Target,
+  //                       DAG.getConstant(0x4, DL, MVT::i16));
+  
+  SDValue SREG_PC = DAG.getTargetConstant(0, DL, MVT::i16);
+  return DAG.getNode(PCPUISD::WRITE_SREG, DL, MVT::Other, Chain, SREG_PC, Target);
+}

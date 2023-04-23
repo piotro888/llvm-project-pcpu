@@ -66,6 +66,7 @@ public:
 
   // SDValue LowerBlockAddress(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerBR_CC(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerBRIND(SDValue Op, SelectionDAG &DAG) const;
   // SDValue LowerConstantPool(SDValue Op, SelectionDAG &DAG) const;
   // SDValue LowerDYNAMIC_STACKALLOC(SDValue Op, SelectionDAG &DAG) const;
   // SDValue LowerFRAMEADDR(SDValue Op, SelectionDAG &DAG) const;
