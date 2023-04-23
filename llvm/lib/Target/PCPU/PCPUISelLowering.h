@@ -32,6 +32,19 @@ enum {
   BR_CC, // Conditional jump,
   WRAPPER, // Wraps TargetConstantPool, TargetExternalSymbol, and TargetGlobalAddress.
   SELECT_CC, // Select one of two values based on conditon. Converted to pseudo
+
+
+  // ==== Fully custom ===
+  // Reads value of SREG.
+  // The first operand is a chain pointer. The second specifies address of the
+  // required CSR. Two results are produced, the read value and the new chain
+  // pointer.
+  READ_SREG,
+  // Write value to CSR.
+  // The first operand is a chain pointer, the second specifies address of the
+  // required CSR and the third is the value to write. The result is the new
+  // chain pointer.
+  WRITE_SREG,
 };
 } // namespace PCPUISD
 

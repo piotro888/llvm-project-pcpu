@@ -130,6 +130,10 @@ const char *PCPUTargetLowering::getTargetNodeName(unsigned Opcode) const {
     return "PCPUISD::WRAPPER";
   case PCPUISD::SELECT_CC:
     return "PCPUISD::SELECT_CC";
+  case PCPUISD::READ_SREG:
+    return "PCPUISD::READ_SREG";
+  case PCPUISD::WRITE_SREG:
+    return "PCPUISD::WRITE_SREG";
   default:
     return nullptr;
   }

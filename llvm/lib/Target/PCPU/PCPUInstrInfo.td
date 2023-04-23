@@ -27,7 +27,9 @@ def SDT_PCPUBrcc : SDTypeProfile<0,  2, [SDTCisVT<0, OtherVT>,
                                         SDTCisVT<1, i16>]>;
 def SDT_PCPUWrapper : SDTypeProfile<1, 1, [SDTCisSameAs<0, 1>, SDTCisPtrTy<0>]>;
 def SDT_PCPUSelectcc : SDTypeProfile<1,  3, [SDTCisSameAs<0, 1>,
-                                                  SDTCisSameAs<1, 2>,  SDTCisVT<3, i16>]>; 
+                                                  SDTCisSameAs<1, 2>,  SDTCisVT<3, i16>]>;
+def SDT_PCPUReadsreg  : SDTypeProfile<1, 1, [SDTCisInt<0>, SDTCisInt<1>]>;
+def SDT_PCPUWritesreg : SDTypeProfile<0, 2, [SDTCisInt<0>, SDTCisInt<1>]>;
 
 // Nodes
 def PCPUcall: SDNode<"PCPUISD::CALL", SDT_PCPUCall,
@@ -43,6 +45,8 @@ def PCPUcmp : SDNode<"PCPUISD::CMP", SDT_PCPUCmp, [SDNPOutGlue]>;
 def PCPUbrcc : SDNode<"PCPUISD::BR_CC", SDT_PCPUBrcc, [SDNPHasChain, SDNPInGlue]>;
 def PCPUselectcc : SDNode<"PCPUISD::SELECT_CC", SDT_PCPUSelectcc, [SDNPInGlue]>;
 def PCPUwrapper : SDNode<"PCPUISD::WRAPPER", SDT_PCPUWrapper>;
+def PCPUreadsreg : SDNode<"PCPUISD::READ_SREG", SDT_PCPUReadsreg, [SDNPHasChain]>;
+def PCPUwritesreg : SDNode<"PCPUISD::WRITE_SREG", SDT_PCPUWritesreg, [SDNPHasChain]>;
 
 // Types
 def CallTarget : Operand<i16>;
@@ -415,6 +419,23 @@ let isBranch = 1, isTerminator = 1 in {
                         [(PCPUbrcc bb:$target, imm:$cond)]>;
   }
 }
+
+//===----------------------------------------------------------------------===//
+// Special instructions
+//===----------------------------------------------------------------------===//
+def SRL : PCPUFri<0b0010000, 
+                  (outs GPR : $rd),
+                  (ins  i16imm : $imm),
+                  "srl $rd, $imm",
+                  [(set i16:$rd, (PCPUreadsreg i16:$imm))]
+> {let rs1=0;}
+
+def SRS : PCPUFri<0b0010001,
+              (outs),
+              (ins GPR : $rs1, i16imm : $imm),
+              "srs $rs1, $imm",
+              [(PCPUwritesreg i16:$imm, i16:$rs1)]
+> {let rd=0;}
 
 //===----------------------------------------------------------------------===//
 // Addressing
