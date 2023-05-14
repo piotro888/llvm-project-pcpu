@@ -38,8 +38,6 @@ public:
                     "-S16"     // 64 bit natural stack alignment
     );
 
-    // 16 bit integers
-    IntWidth = IntAlign = 16;
 
     // Setting RegParmMax equal to what mregparm was set to in the old
     // toolchain
@@ -50,6 +48,29 @@ public:
     // TODO: Remove this when there are no more cast align warnings on the
     // firmware.
     MinGlobalAlign = 16;
+
+    PointerWidth = 16;
+    PointerAlign = 16;
+
+    IntWidth = 16;
+    IntAlign = 16;
+
+    LongWidth = 32;
+    LongAlign = 16;
+
+    LongLongWidth = 64;
+    LongLongAlign = 16;
+
+    SuitableAlign = 16;
+    DefaultAlignForAttributeAligned = 16;
+
+    SizeType = UnsignedInt;
+    PtrDiffType = SignedInt;
+    IntPtrType = SignedInt;
+    Char16Type = UnsignedInt;
+    WIntType = SignedInt;
+    Int16Type = SignedInt;
+    Char32Type = UnsignedLong;
   }
 
   void getTargetDefines(const LangOptions &Opts,
