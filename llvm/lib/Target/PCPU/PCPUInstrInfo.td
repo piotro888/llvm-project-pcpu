@@ -78,16 +78,18 @@ def LDI : PCPUFi<0b0000100,
   >;
 }
 
-// TODO: lets params
 
 class StoreOP <bits<7> op, dag ins, string asmstr, list<dag> pattern> :
   PCPUFrri<op, (outs), ins, asmstr, pattern> {
     let rd = 0;
+    let mayStore = 1;
 }
 
 class LoadOP <bits<7> op, dag outs, dag ins, string asmstr, list<dag> pattern> :
   PCPUFrri<op, outs, ins, asmstr, pattern> {
     let rs2 = 0;
+    let mayLoad = 1;
+    let canFoldAsLoad = 1;
 }
 
 def STD: StoreOP<0b0000101,
@@ -106,12 +108,14 @@ def STO: StoreOP<0b0000110,
 def : Pat<(store i16:$rs1, i16:$rs2),
           (STO i16:$rs1, i16:$rs2, (i16 0))>;
 
-def LDD : LoadOP<0b0000010,
-  (outs GPR: $rd),
-  (ins i16imm: $imm),
-  "ldd $rd, $imm",
-  [(set i16 : $rd, (load imm : $imm))]> {
-    let rs1 = 0;
+let isReMaterializable=1 in {
+    def LDD : LoadOP<0b0000010,
+      (outs GPR: $rd),
+      (ins i16imm: $imm),
+      "ldd $rd, $imm",
+      [(set i16 : $rd, (load imm : $imm))]> {
+        let rs1 = 0;
+    }
 }
 
 def LDO : LoadOP<0b0000011,
@@ -141,12 +145,14 @@ def SO8: StoreOP<0b0100010,
 def : Pat<(truncstorei8 i16:$rs1, i16:$rs2),
           (SO8 i16:$rs1, i16:$rs2, (i16 0))>;
 
-def LD8 : LoadOP<0b0011111,
-  (outs GPR: $rd),
-  (ins i16imm: $imm),
-  "ld8 $rd, $imm",
-  [(set i16 : $rd, (zextloadi8 imm : $imm))]> {
-    let rs1 = 0;
+let isReMaterializable = 1 in {
+    def LD8 : LoadOP<0b0011111,
+      (outs GPR: $rd),
+      (ins i16imm: $imm),
+      "ld8 $rd, $imm",
+      [(set i16 : $rd, (zextloadi8 imm : $imm))]> {
+        let rs1 = 0;
+    }
 }
 
 def LO8 : LoadOP<0b0100000,
@@ -171,7 +177,7 @@ def : Pat<(extloadi8 imm:$addr),
 // ARTIHMETIC instructions
 //===----------------------------------------------------------------------===//
 
-let Defs = [FREG] in {
+let Defs = [FREG], isAsCheapAsAMove = 1 in {
   def ADD :
     PCPUFrr<0b0000111,
       (outs GPR: $rd),
@@ -348,7 +354,7 @@ def MOD :
 // CMP instructions
 //===----------------------------------------------------------------------===//
 
-let rd = 0, Defs = [FREG] in {
+let rd = 0, Defs = [FREG], isCompare = 1 in {
   def CMP: PCPUFrr<0b0001100,
               (outs),
               (ins GPR: $rs1, GPR: $rs2),
@@ -376,12 +382,11 @@ let Uses = [FREG], usesCustomInserter = 1 in {
 
 // JUMP AND LINK
 let isCall = 1, Uses = [SP], Defs = [RCA] in { //FP?
-let rd = 0x6, rs1=0 in {
-def CALLi : PCPUFr1<0b0001111,
-              (outs), (ins CallTarget:$k),
-              "jal r6, $k", [(PCPUcall imm:$k)]>;
-}
-//def CALLr TODO
+    let rd = 0x6, rs1 = 0 in {
+        def CALLi : PCPUFr1<0b0001111,
+                      (outs), (ins CallTarget:$k),
+                      "jal r6, $k", [(PCPUcall imm:$k)]>;
+    }
 }
 
 // Call patterns
@@ -397,7 +402,7 @@ let Defs = [SP], Uses = [SP] in {
                                 [(PCPUcallSeqEnd timm:$amt1, timm:$amt2)]>;
 }
 
-let isTerminator = 1, isReturn = 1 in {
+let isTerminator = 1, isReturn = 1, isBarrier = 1 in {
   // FIXME: Expand to SRS with correct bits set.
   def RET : PCPUNul<0b1111111, (outs), (ins), "srs r6, 0 ; ret", [(PCPUret)]>;
 }
@@ -406,7 +411,7 @@ let isTerminator = 1, isReturn = 1 in {
 // JUMP/BRANCH instructions
 //===----------------------------------------------------------------------===//
 
-let isBranch = 1, isTerminator = 1 in {
+let isBranch = 1, isTerminator = 1, isBarrier = 1 in {
   def JMP : PCPUFJMPCC<0b0001110, (outs), (ins brtarget:$target),
                   "jmp $target",
                   [(br bb:$target)]> {
@@ -414,28 +419,33 @@ let isBranch = 1, isTerminator = 1 in {
   }
 
   let Uses = [FREG] in {
-  def JCOND : PCPUFJMPCC<0b0001110, (outs), (ins brtarget:$target, CCOp:$cond),
-                         "j$cond $target",
-                        [(PCPUbrcc bb:$target, imm:$cond)]>;
+      def JCOND : PCPUFJMPCC<0b0001110, (outs), (ins brtarget:$target, CCOp:$cond),
+                             "j$cond $target",
+                            [(PCPUbrcc bb:$target, imm:$cond)]>;
   }
+
+  // TODO Add indirect branch with is indirect branch to properly let params
 }
 
 //===----------------------------------------------------------------------===//
 // Special instructions
 //===----------------------------------------------------------------------===//
-def SRL : PCPUFri<0b0010000, 
-                  (outs GPR : $rd),
-                  (ins  i16imm : $imm),
-                  "srl $rd, $imm",
-                  [(set i16:$rd, (PCPUreadsreg i16:$imm))]
-> {let rs1=0;}
 
-def SRS : PCPUFri<0b0010001,
-              (outs),
-              (ins GPR : $rs1, i16imm : $imm),
-              "srs $rs1, $imm",
-              [(PCPUwritesreg i16:$imm, i16:$rs1)]
-> {let rd=0;}
+let hasNoSchedulingInfo = 1, hasSideEffects = 1, mayLoad = 0, mayStore = 0 in {
+    def SRL : PCPUFri<0b0010000, 
+                      (outs GPR : $rd),
+                      (ins  i16imm : $imm),
+                      "srl $rd, $imm",
+                      [(set i16:$rd, (PCPUreadsreg i16:$imm))]
+    > {let rs1=0;}
+
+    def SRS : PCPUFri<0b0010001,
+                  (outs),
+                  (ins GPR : $rs1, i16imm : $imm),
+                  "srs $rs1, $imm",
+                  [(PCPUwritesreg i16:$imm, i16:$rs1)]
+    > {let rd=0;}
+}
 
 //===----------------------------------------------------------------------===//
 // Addressing (WRAPPER)
