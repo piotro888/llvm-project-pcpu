@@ -24,12 +24,21 @@ namespace llvm {
 class PCPUMachineFunctionInfo : public MachineFunctionInfo {
   virtual void anchor();
 
+  // VarArgsFrameIndex - FrameIndex for start of varargs area.
+  int VarArgsFrameIndex;
+
 public:
+  
   PCPUMachineFunctionInfo(const Function &F, const TargetSubtargetInfo *STI) {}
+  
   MachineFunctionInfo *
   clone(BumpPtrAllocator &Allocator, MachineFunction &DestMF,
         const DenseMap<MachineBasicBlock *, MachineBasicBlock *> &Src2DstMBB)
       const override;
+  
+  int getVarArgsFrameIndex() const { return VarArgsFrameIndex; }
+  void setVarArgsFrameIndex(int Index) { VarArgsFrameIndex = Index; }
+
 };
 
 } // namespace llvm

@@ -99,6 +99,12 @@ PCPUTargetLowering::PCPUTargetLowering(const TargetMachine &TM,
 
   setOperationAction(ISD::UMUL_LOHI, MVT::i16, Expand);
   // need to implelemt MULHU, MULHS
+
+  setOperationAction(ISD::VASTART, MVT::Other, Custom);
+  setOperationAction(ISD::VAARG, MVT::Other, Expand);
+  setOperationAction(ISD::VACOPY, MVT::Other, Expand);
+  setOperationAction(ISD::VAEND, MVT::Other, Expand);
+
   setStackPointerRegisterToSaveRestore(PCPU::SP);
 }
 
@@ -117,6 +123,8 @@ SDValue PCPUTargetLowering::LowerOperation(SDValue Op,
     return LowerBRIND(Op, DAG);
   case ISD::JumpTable:
     return LowerJumpTable(Op, DAG);
+  case ISD::VASTART:
+    return LowerVASTART(Op, DAG);
   default:
     llvm_unreachable("unimplemented operand");
   }
@@ -458,12 +466,12 @@ SDValue PCPUTargetLowering::LowerCCCArguments(
   //   Chain = DAG.getNode(ISD::TokenFactor, DL, MVT::Other, Copy, Chain);
   // }
 
-  // if (IsVarArg) {
-  //   // Record the frame index of the first variable argument
-  //   // which is a value necessary to VASTART.
-  //   int FI = MFI.CreateFixedObject(4, CCInfo.getNextStackOffset(), true);
-  //   LanaiMFI->setVarArgsFrameIndex(FI);
-  // }
+  if (IsVarArg) {
+    // Record the frame index of the first variable argument
+    // which is a value necessary to VASTART.
+    int FI = MFI.CreateFixedObject(4, CCInfo.getNextStackOffset(), true);
+    PCPUMFI->setVarArgsFrameIndex(FI);
+ }
 
   return Chain;
 }
@@ -527,6 +535,21 @@ PCPUTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
   // Return Void
   return DAG.getNode(Opc, DL, MVT::Other,
                      ArrayRef<SDValue>(&RetOps[0], RetOps.size()));
+}
+
+SDValue PCPUTargetLowering::LowerVASTART(SDValue Op, SelectionDAG &DAG) const {
+  MachineFunction &MF = DAG.getMachineFunction();
+  PCPUMachineFunctionInfo *FuncInfo = MF.getInfo<PCPUMachineFunctionInfo>();
+
+  SDLoc DL(Op);
+  SDValue FI = DAG.getFrameIndex(FuncInfo->getVarArgsFrameIndex(),
+                                 getPointerTy(DAG.getDataLayout()));
+
+  // vastart just stores the address of the VarArgsFrameIndex slot into the
+  // memory location argument.
+  const Value *SV = cast<SrcValueSDNode>(Op.getOperand(2))->getValue();
+  return DAG.getStore(Op.getOperand(0), DL, FI, Op.getOperand(1),
+                      MachinePointerInfo(SV));
 }
 
 //===----------------------------------------------------------------------===//

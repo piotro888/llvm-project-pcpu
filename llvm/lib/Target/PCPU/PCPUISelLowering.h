@@ -78,7 +78,7 @@ public:
   SDValue LowerSETCC(SDValue Op, SelectionDAG &DAG) const;
   // SDValue LowerSHL_PARTS(SDValue Op, SelectionDAG &DAG) const;
   // SDValue LowerSRL_PARTS(SDValue Op, SelectionDAG &DAG) const;
-  // SDValue LowerVASTART(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerVASTART(SDValue Op, SelectionDAG &DAG) const;
 
   // bool CanLowerReturn(CallingConv::ID CallConv, MachineFunction &MF,
   //                     bool IsVarArg,
