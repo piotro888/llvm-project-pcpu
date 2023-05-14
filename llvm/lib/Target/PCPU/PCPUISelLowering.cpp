@@ -84,6 +84,7 @@ PCPUTargetLowering::PCPUTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::SELECT_CC, MVT::i16, Custom);
 
   setOperationAction(ISD::GlobalAddress, MVT::i16, Custom);
+  setOperationAction(ISD::JumpTable, MVT::i16, Custom);
 
   setOperationAction(ISD::ROTL, MVT::i16, Expand);
   setOperationAction(ISD::ROTR, MVT::i16, Expand);
@@ -114,6 +115,8 @@ SDValue PCPUTargetLowering::LowerOperation(SDValue Op,
     return LowerSETCC(Op, DAG);
   case ISD::BRIND:
     return LowerBRIND(Op, DAG);
+  case ISD::JumpTable:
+    return LowerJumpTable(Op, DAG);
   default:
     llvm_unreachable("unimplemented operand");
   }
@@ -739,4 +742,15 @@ SDValue PCPUTargetLowering::LowerBRIND(SDValue Op, SelectionDAG &DAG) const {
   
   SDValue SREG_PC = DAG.getTargetConstant(0, DL, MVT::i16);
   return DAG.getNode(PCPUISD::WRITE_SREG, DL, MVT::Other, Chain, SREG_PC, Target);
+}
+
+SDValue PCPUTargetLowering::LowerJumpTable(SDValue Op,
+                                            SelectionDAG &DAG) const {
+  SDLoc DL(Op);
+  JumpTableSDNode *JT = cast<JumpTableSDNode>(Op);
+
+  SDValue Small = DAG.getTargetJumpTable(
+        JT->getIndex(), getPointerTy(DAG.getDataLayout()), PCPUII::MO_NO_FLAG);
+
+  return DAG.getNode(PCPUISD::WRAPPER, DL, MVT::i16, Small);
 }

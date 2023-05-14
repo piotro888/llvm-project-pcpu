@@ -438,10 +438,12 @@ def SRS : PCPUFri<0b0010001,
 > {let rd=0;}
 
 //===----------------------------------------------------------------------===//
-// Addressing
+// Addressing (WRAPPER)
 //===----------------------------------------------------------------------===//
 
 // GlobalAddress
 def : Pat<(i16(PCPUwrapper tglobaladdr : $dst)), (LDI tglobaladdr : $dst)>; // For long mode implementation, see AVR equivalent with DLDREGS
 def : Pat<(i16(load (PCPUwrapper tglobaladdr : $dst))), (LDD tglobaladdr : $dst)>;
 def : Pat<(store i16 : $src, (PCPUwrapper tglobaladdr : $dst)), (STD i16 : $src, tglobaladdr : $dst)>;
+// Jump table
+def : Pat<(i16(PCPUwrapper tjumptable : $jt)), (LDI tjumptable : $jt)>;
