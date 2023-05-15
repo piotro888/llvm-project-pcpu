@@ -423,8 +423,8 @@ let Defs = [SP], Uses = [SP] in {
 }
 
 let isTerminator = 1, isReturn = 1, isBarrier = 1 in {
-  // FIXME: Expand to SRS with correct bits set.
-  def RET : PCPUNul<0b1111111, (outs), (ins), "srs r6, 0 ; ret", [(PCPUret)]>;
+  def RET : Pseudo<(outs), (ins), "#RET", [(PCPUret)]>,
+            PseudoInstExpansion<(SRS R6, (i16 0))>;
 }
 
 //===----------------------------------------------------------------------===//
