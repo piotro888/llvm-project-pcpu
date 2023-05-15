@@ -424,7 +424,7 @@ let Defs = [SP], Uses = [SP] in {
 
 let isTerminator = 1, isReturn = 1, isBarrier = 1 in {
   def RET : Pseudo<(outs), (ins), "#RET", [(PCPUret)]>,
-            PseudoInstExpansion<(SRS R6, (i16 0))>;
+            PseudoInstExpansion<(SRS R6, 0)>;
 }
 
 //===----------------------------------------------------------------------===//
@@ -446,7 +446,7 @@ let isBranch = 1, isTerminator = 1, isBarrier = 1 in {
   
   let isIndirectBranch = 1 in {
     def JIND : Pseudo<(outs), (ins GPR : $rs1), "#BRIND", [(brind GPR:$rs1)]>,
-               PseudoInstExpansion<(SRS GPR:$rs1, (i16 0))>;
+               PseudoInstExpansion<(SRS GPR:$rs1, 0)>;
   }
 }
 

@@ -90,16 +90,12 @@ MCOperand PCPUMCInstLower::LowerSymbolOperand(const MachineOperand &MO,
   return MCOperand::createExpr(Expr);
 }
 
-void PCPUMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) const {
-  OutMI.setOpcode(MI->getOpcode());
-
-  for (const MachineOperand &MO : MI->operands()) {
-    MCOperand MCOp;
+bool PCPUMCInstLower::lowerOperand(const MachineOperand &MO, MCOperand &MCOp) const {
     switch (MO.getType()) {
     case MachineOperand::MO_Register:
       // Ignore all implicit register operands.
       if (MO.isImplicit())
-        continue;
+        return false;
       MCOp = MCOperand::createReg(MO.getReg());
       break;
     case MachineOperand::MO_Immediate:
@@ -110,7 +106,7 @@ void PCPUMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) const {
           MCSymbolRefExpr::create(MO.getMBB()->getSymbol(), Ctx));
       break;
     case MachineOperand::MO_RegisterMask:
-      continue;
+      return false;
     case MachineOperand::MO_GlobalAddress:
       MCOp = LowerSymbolOperand(MO, GetGlobalAddressSymbol(MO));
       break;
@@ -127,10 +123,18 @@ void PCPUMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) const {
       MCOp = LowerSymbolOperand(MO, GetConstantPoolIndexSymbol(MO));
       break;
     default:
-      MI->print(errs());
       llvm_unreachable("unknown operand type");
     }
+  return true;
+}
 
-    OutMI.addOperand(MCOp);
+void PCPUMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) const {
+  OutMI.setOpcode(MI->getOpcode());
+
+  for (const MachineOperand &MO : MI->operands()) {
+    MCOperand MCOp;
+
+    if (lowerOperand(MO, MCOp))
+      OutMI.addOperand(MCOp);
   }
 }

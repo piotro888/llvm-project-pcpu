@@ -9,6 +9,7 @@ tablegen(LLVM PCPUGenDAGISel.inc -gen-dag-isel)
 tablegen(LLVM PCPUGenDisassemblerTables.inc -gen-disassembler)
 tablegen(LLVM PCPUGenInstrInfo.inc -gen-instr-info)
 tablegen(LLVM PCPUGenMCCodeEmitter.inc -gen-emitter)
+tablegen(LLVM PCPUGenMCPseudoLowering.inc -gen-pseudo-lowering)
 tablegen(LLVM PCPUGenRegisterInfo.inc -gen-register-info)
 tablegen(LLVM PCPUGenSubtargetInfo.inc -gen-subtarget)
 

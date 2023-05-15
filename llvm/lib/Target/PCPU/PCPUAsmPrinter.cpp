@@ -52,6 +52,11 @@ public:
   bool PrintAsmOperand(const MachineInstr *MI, unsigned OpNo,
                        const char *ExtraCode, raw_ostream &O) override;
   void emitInstruction(const MachineInstr *MI) override;
+  
+  bool emitPseudoExpansionLowering(MCStreamer &OutStreamer,
+                                   const MachineInstr *MI);
+  // Wrapper needed for tblgenned pseudo lowering.
+  bool lowerOperand(const MachineOperand &MO, MCOperand &MCOp);
 
 private:
   void customEmitInstruction(const MachineInstr *MI);
@@ -142,12 +147,27 @@ bool PCPUAsmPrinter::PrintAsmOperand(const MachineInstr *MI, unsigned OpNo,
   return false;
 }
 
+// Simple pseudo-instructions have their lowering (with expansion to real
+// instructions) auto-generated.
+#include "PCPUGenMCPseudoLowering.inc"
+
 void PCPUAsmPrinter::emitInstruction(const MachineInstr *MI) {
   PCPUMCInstLower MCInstLowering(OutContext, *this);
   MCSubtargetInfo STI = getSubtargetInfo();
+
+  // Do any auto-generated pseudo lowerings.
+  if (emitPseudoExpansionLowering(*OutStreamer, MI))
+    return;
+
   MCInst TmpInst;
+  
   MCInstLowering.Lower(MI, TmpInst);
   OutStreamer->emitInstruction(TmpInst, STI);
+}
+
+bool PCPUAsmPrinter::lowerOperand(const MachineOperand &MO, MCOperand &MCOp) {
+  PCPUMCInstLower MCInstLowering(OutContext, *this);
+  return MCInstLowering.lowerOperand(MO, MCOp);
 }
 
 // Force static initialization.
