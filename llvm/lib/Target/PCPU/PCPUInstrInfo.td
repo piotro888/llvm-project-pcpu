@@ -351,6 +351,26 @@ def MOD :
 >;
 
 //===----------------------------------------------------------------------===//
+// Special instructions
+//===----------------------------------------------------------------------===//
+
+let hasNoSchedulingInfo = 1, hasSideEffects = 1, mayLoad = 0, mayStore = 0 in {
+    def SRL : PCPUFri<0b0010000, 
+                      (outs GPR : $rd),
+                      (ins  i16imm : $imm),
+                      "srl $rd, $imm",
+                      [(set i16:$rd, (PCPUreadsreg i16:$imm))]
+    > {let rs1=0;}
+
+    def SRS : PCPUFri<0b0010001,
+                  (outs),
+                  (ins GPR : $rs1, i16imm : $imm),
+                  "srs $rs1, $imm",
+                  [(PCPUwritesreg i16:$imm, i16:$rs1)]
+    > {let rd=0;}
+}
+
+//===----------------------------------------------------------------------===//
 // CMP instructions
 //===----------------------------------------------------------------------===//
 
@@ -423,28 +443,11 @@ let isBranch = 1, isTerminator = 1, isBarrier = 1 in {
                              "j$cond $target",
                             [(PCPUbrcc bb:$target, imm:$cond)]>;
   }
-
-  // TODO Add indirect branch with is indirect branch to properly let params
-}
-
-//===----------------------------------------------------------------------===//
-// Special instructions
-//===----------------------------------------------------------------------===//
-
-let hasNoSchedulingInfo = 1, hasSideEffects = 1, mayLoad = 0, mayStore = 0 in {
-    def SRL : PCPUFri<0b0010000, 
-                      (outs GPR : $rd),
-                      (ins  i16imm : $imm),
-                      "srl $rd, $imm",
-                      [(set i16:$rd, (PCPUreadsreg i16:$imm))]
-    > {let rs1=0;}
-
-    def SRS : PCPUFri<0b0010001,
-                  (outs),
-                  (ins GPR : $rs1, i16imm : $imm),
-                  "srs $rs1, $imm",
-                  [(PCPUwritesreg i16:$imm, i16:$rs1)]
-    > {let rd=0;}
+  
+  let isIndirectBranch = 1 in {
+    def JIND : Pseudo<(outs), (ins GPR : $rs1), "#BRIND", [(brind GPR:$rs1)]>,
+               PseudoInstExpansion<(SRS GPR:$rs1, (i16 0))>;
+  }
 }
 
 //===----------------------------------------------------------------------===//

@@ -73,7 +73,6 @@ PCPUTargetLowering::PCPUTargetLowering(const TargetMachine &TM,
   // Expand complex branches (to sub ops like BR_CC)
   setOperationAction(ISD::BR_JT, MVT::Other, Expand);
   setOperationAction(ISD::BRCOND, MVT::Other, Expand);
-  setOperationAction(ISD::BRIND, MVT::Other, Custom); // note: can be disabled by setting to custom
 
   // We dont have select or setcc operations.
   setOperationAction(ISD::SELECT, MVT::i16, Expand);
@@ -119,8 +118,6 @@ SDValue PCPUTargetLowering::LowerOperation(SDValue Op,
     return LowerSELECT_CC(Op, DAG);
   case ISD::SETCC:
     return LowerSETCC(Op, DAG);
-  case ISD::BRIND:
-    return LowerBRIND(Op, DAG);
   case ISD::JumpTable:
     return LowerJumpTable(Op, DAG);
   case ISD::VASTART:
@@ -751,6 +748,7 @@ MachineBasicBlock* PCPUTargetLowering::expandSelectCC(MachineInstr &MI, MachineB
   return SinkMBB;
 }
 
+/*
 SDValue PCPUTargetLowering::LowerBRIND(SDValue Op, SelectionDAG &DAG) const {
   SDValue Chain = Op.getOperand(0);
   SDValue Target = Op.getOperand(1);
@@ -766,6 +764,7 @@ SDValue PCPUTargetLowering::LowerBRIND(SDValue Op, SelectionDAG &DAG) const {
   SDValue SREG_PC = DAG.getTargetConstant(0, DL, MVT::i16);
   return DAG.getNode(PCPUISD::WRITE_SREG, DL, MVT::Other, Chain, SREG_PC, Target);
 }
+*/
 
 SDValue PCPUTargetLowering::LowerJumpTable(SDValue Op,
                                             SelectionDAG &DAG) const {
