@@ -71,12 +71,6 @@ MCOperand PCPUMCInstLower::LowerSymbolOperand(const MachineOperand &MO,
   case PCPUII::MO_NO_FLAG:
     Kind = PCPUMCExpr::VK_PCPU_None;
     break;
-  case PCPUII::MO_ABS_HI:
-    Kind = PCPUMCExpr::VK_PCPU_ABS_HI;
-    break;
-  case PCPUII::MO_ABS_LO:
-    Kind = PCPUMCExpr::VK_PCPU_ABS_LO;
-    break;
   default:
     llvm_unreachable("Unknown target flag on GV operand");
   }

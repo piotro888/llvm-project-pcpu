@@ -88,7 +88,17 @@ public:
 } // end anonymous namespace
 
 static PCPU::Fixups FixupKind(const MCExpr *Expr) {
-  return PCPU::Fixups(0);
+  if (isa<MCSymbolRefExpr>(Expr)) // labels, consts
+    return PCPU::FIXUP_PCPU_16;
+  
+  if (const PCPUMCExpr *McExpr = dyn_cast<PCPUMCExpr>(Expr)) {
+    PCPUMCExpr::VariantKind ExprKind = McExpr->getKind();
+    switch (ExprKind) {
+    case PCPUMCExpr::VK_PCPU_None: // everything for now, can be 16 bit hi/lo later based on flags (see lanai)
+      return PCPU::FIXUP_PCPU_16;
+    }
+  }
+  return PCPU::Fixups(0); // illegal
 }
 
 // getMachineOpValue - Return binary encoding of operand. If the machine

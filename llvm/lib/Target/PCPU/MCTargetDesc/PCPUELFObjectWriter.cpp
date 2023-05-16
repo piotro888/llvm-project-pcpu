@@ -46,7 +46,9 @@ unsigned PCPUELFObjectWriter::getRelocType(MCContext & /*Ctx*/,
   case PCPU::FIXUP_PCPU_NONE:
     Type = ELF::R_PCPU_NONE;
     break;
-
+  case PCPU::FIXUP_PCPU_16:
+    Type = ELF::R_PCPU_16;
+    break;
   default:
     llvm_unreachable("Invalid fixup kind!");
   }

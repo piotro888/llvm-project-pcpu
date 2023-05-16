@@ -28,12 +28,6 @@ void PCPUMCExpr::printImpl(raw_ostream &OS, const MCAsmInfo *MAI) const {
   switch (Kind) {
   default:
     llvm_unreachable("Invalid kind!");
-  case VK_PCPU_ABS_HI:
-    OS << "hi";
-    break;
-  case VK_PCPU_ABS_LO:
-    OS << "lo";
-    break;
   }
 
   OS << '(';

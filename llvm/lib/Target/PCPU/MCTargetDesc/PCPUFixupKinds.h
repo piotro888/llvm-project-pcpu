@@ -25,6 +25,8 @@ enum Fixups {
   // Results in R_PCPU_NONE
   FIXUP_PCPU_NONE = FirstTargetFixupKind,
 
+  FIXUP_PCPU_16, // Generic 16-bit fixup
+
   // Marker
   LastTargetFixupKind,
   NumTargetFixupKinds = LastTargetFixupKind - FirstTargetFixupKind
