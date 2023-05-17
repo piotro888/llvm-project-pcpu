@@ -28,12 +28,7 @@ namespace PCPUII {
 enum TOF {
   //===------------------------------------------------------------------===//
   // PCPU Specific MachineOperand flags.
-  MO_NO_FLAG,
-
-  // MO_ABS_HI/LO - Represents the hi or low part of an absolute symbol
-  // address.
-  MO_ABS_HI,
-  MO_ABS_LO,
+  MO_NO_FLAG
 };
 } // namespace PCPUII
 

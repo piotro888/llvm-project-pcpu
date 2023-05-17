@@ -173,6 +173,7 @@ TargetInfo *getARMTargetInfo();
 TargetInfo *getAVRTargetInfo();
 TargetInfo *getHexagonTargetInfo();
 TargetInfo *getMSP430TargetInfo();
+TargetInfo *getPCPUTargetInfo();
 TargetInfo *getPPC64TargetInfo();
 TargetInfo *getPPCTargetInfo();
 TargetInfo *getRISCVTargetInfo();
