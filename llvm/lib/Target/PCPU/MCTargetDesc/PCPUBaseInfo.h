@@ -34,6 +34,7 @@ enum TOF {
 
 static inline unsigned getPCPURegisterNumbering(unsigned Reg) {
   switch (Reg) {
+  case PCPU::RV:
   case PCPU::R0:
     return 0;
   case PCPU::R1:

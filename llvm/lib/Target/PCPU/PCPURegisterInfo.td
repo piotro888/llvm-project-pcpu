@@ -28,6 +28,7 @@ foreach i = 0-7 in {
 
 // Register aliases
 let SubRegIndices = [sub_16] in {
+  def RV  : PCPUReg<0,  "rv",  [R0]>,  DwarfRegAlias<R0>;
   def FP  : PCPUReg<5,  "fp",  [R5]>,  DwarfRegAlias<R5>;
   def RCA : PCPUReg<6,  "rc",  [R6]>,  DwarfRegAlias<R6>;
   def SP  : PCPUReg<7,  "sp",  [R7]>,  DwarfRegAlias<R7>;
@@ -37,7 +38,7 @@ let SubRegIndices = [sub_16] in {
 // Register classes.
 def GPR : RegisterClass<"PCPU", [i16], 16,
     (add
-     R1, R2, R3, R0, R4,  // GPR 
+     R1, R2, R3, R0, RV, R4,  // GPR
      R6,  RCA,  // return value
      R5,  FP,  // frame pointer
      R7,  SP  // stack pointer

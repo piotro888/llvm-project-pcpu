@@ -73,15 +73,15 @@ bool PCPUInstPrinter::printMemoryLoadIncrement(const MCInst *MI,
                                                 StringRef Opcode,
                                                 int AddOffset) {
   if (isPreIncrementForm(MI, AddOffset)) {
-    OS << "\t" << Opcode << "\t[" << decIncOperator(MI) << "%"
-       << getRegisterName(MI->getOperand(1).getReg()) << "], %"
+    OS << "\t" << Opcode << "\t[" << decIncOperator(MI)
+       << getRegisterName(MI->getOperand(1).getReg()) << "], "
        << getRegisterName(MI->getOperand(0).getReg());
     return true;
   }
   if (isPostIncrementForm(MI, AddOffset)) {
-    OS << "\t" << Opcode << "\t[%"
+    OS << "\t" << Opcode << "\t["
        << getRegisterName(MI->getOperand(1).getReg()) << decIncOperator(MI)
-       << "], %" << getRegisterName(MI->getOperand(0).getReg());
+       << "], " << getRegisterName(MI->getOperand(0).getReg());
     return true;
   }
   return false;
@@ -92,14 +92,14 @@ bool PCPUInstPrinter::printMemoryStoreIncrement(const MCInst *MI,
                                                  StringRef Opcode,
                                                  int AddOffset) {
   if (isPreIncrementForm(MI, AddOffset)) {
-    OS << "\t" << Opcode << "\t%" << getRegisterName(MI->getOperand(0).getReg())
-       << ", [" << decIncOperator(MI) << "%"
+    OS << "\t" << Opcode << "\t" << getRegisterName(MI->getOperand(0).getReg())
+       << ", [" << decIncOperator(MI)
        << getRegisterName(MI->getOperand(1).getReg()) << "]";
     return true;
   }
   if (isPostIncrementForm(MI, AddOffset)) {
-    OS << "\t" << Opcode << "\t%" << getRegisterName(MI->getOperand(0).getReg())
-       << ", [%" << getRegisterName(MI->getOperand(1).getReg())
+    OS << "\t" << Opcode << "\t" << getRegisterName(MI->getOperand(0).getReg())
+       << ", [" << getRegisterName(MI->getOperand(1).getReg())
        << decIncOperator(MI) << "]";
     return true;
   }
@@ -127,7 +127,7 @@ void PCPUInstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
   assert((Modifier == nullptr || Modifier[0] == 0) && "No modifiers supported");
   const MCOperand &Op = MI->getOperand(OpNo);
   if (Op.isReg())
-    OS << "%" << getRegisterName(Op.getReg());
+    OS << getRegisterName(Op.getReg());
   else if (Op.isImm())
     OS << formatHex(Op.getImm());
   else {
@@ -192,7 +192,7 @@ static void printMemoryBaseRegister(raw_ostream &OS, const unsigned AluCode,
   OS << "[";
   if (LPAC::isPreOp(AluCode))
     OS << "*";
-  OS << "%" << PCPUInstPrinter::getRegisterName(RegOp.getReg());
+  OS << PCPUInstPrinter::getRegisterName(RegOp.getReg());
   if (LPAC::isPostOp(AluCode))
     OS << "*";
   OS << "]";
@@ -238,11 +238,11 @@ void PCPUInstPrinter::printMemRrOperand(const MCInst *MI, int OpNo,
   OS << "[";
   if (LPAC::isPreOp(AluCode))
     OS << "*";
-  OS << "%" << getRegisterName(RegOp.getReg());
+  OS << getRegisterName(RegOp.getReg());
   if (LPAC::isPostOp(AluCode))
     OS << "*";
   OS << " " << LPAC::PCPUAluCodeToString(AluCode) << " ";
-  OS << "%" << getRegisterName(OffsetOp.getReg());
+  OS << getRegisterName(OffsetOp.getReg());
   OS << "]";
 }
 
