@@ -403,9 +403,9 @@ let Uses = [FREG], usesCustomInserter = 1 in {
 // JUMP AND LINK
 let isCall = 1, Uses = [SP], Defs = [RCA] in { //FP?
     let rd = 0x6, rs1 = 0 in {
-        def CALLi : PCPUFr1<0b0001111,
-                      (outs), (ins CallTarget:$k),
-                      "jal r6, $k", [(PCPUcall imm:$k)]>;
+        def CALLi : PCPUFri<0b0001111,
+                      (outs), (ins CallTarget:$imm),
+                      "jal r6, $imm", [(PCPUcall imm:$imm)]>;
     }
 }
 
