@@ -51,7 +51,7 @@ RelExpr PCPU::getRelExpr(RelType type, const Symbol &s,
 void PCPU::relocate(uint8_t *loc, const Relocation &rel, uint64_t val) const {
   switch (rel.type) {
   case R_PCPU_16:
-    write16le(loc, val);
+    write16be(loc, val);
     break;
   default:
     llvm_unreachable("unknown relocation");
