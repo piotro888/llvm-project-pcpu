@@ -47,5 +47,6 @@ add_llvm_target(PCPUCodeGen
   PCPU
 )
 
+add_subdirectory(Disassembler)
 add_subdirectory(MCTargetDesc)
 add_subdirectory(TargetInfo)
