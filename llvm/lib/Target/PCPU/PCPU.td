@@ -34,6 +34,17 @@ def PCPUInstPrinter : AsmWriter {
   bit isMCAsmWriter = 1;
 }
 
+def PCPUAsmParser : AsmParser {
+  bit HasMnemonicFirst = 0;
+}
+
+def PCPUAsmParserVariant : AsmParserVariant {
+  int Variant = 0;
+  string Name = "PCPU";
+  string BreakCharacters = ".";
+  string TokenizingCharacters = "#()[]=:.<>!+*";
+}
+
 //===----------------------------------------------------------------------===//
 // Declare the target which we are implementing
 //===----------------------------------------------------------------------===//
@@ -42,4 +53,6 @@ def PCPU : Target {
   // Pull in Instruction Info:
   let InstructionSet = PCPUInstrInfo;
   let AssemblyWriters = [PCPUInstPrinter];
+  let AssemblyParsers = [PCPUAsmParser];
+  let AssemblyParserVariants = [PCPUAsmParserVariant];
 }
