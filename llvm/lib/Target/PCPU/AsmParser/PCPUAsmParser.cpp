@@ -7,9 +7,9 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
-
 #include "MCTargetDesc/PCPUMCTargetDesc.h"
 #include "TargetInfo/PCPUTargetInfo.h"
+#include "PCPUCondCode.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/StringSwitch.h"
 #include "llvm/MC/MCContext.h"
@@ -47,6 +47,9 @@ class PCPUAsmParser : public MCTargetAsmParser {
                                bool MatchingInlineAsm) override;
   unsigned validateTargetOperandClass(MCParsedAsmOperand &Op,
                                       unsigned Kind) override;
+  
+  StringRef splitMnemonic(StringRef Name, SMLoc NameLoc,
+                          OperandVector *Operands);
 
 // Auto-generated instruction matching functions
 #define GET_ASSEMBLER_HEADER
@@ -141,24 +144,6 @@ public:
   bool isImm(int64_t MinValue, int64_t MaxValue) const {
     return Kind == Immediate && inRange(getImm(), MinValue, MaxValue);
   }
-
-  bool isImm8() const { return isImm(-128, 127); }
-
-
-  bool isOffset8m8() const { return isImm(0, 255); }
-
-  bool isOffset8m16() const {
-    return isImm(0, 510) &&
-           ((cast<MCConstantExpr>(getImm())->getValue() & 0x1) == 0);
-  }
-
-  bool isOffset8m32() const {
-    return isImm(0, 1020) &&
-           ((cast<MCConstantExpr>(getImm())->getValue() & 0x3) == 0);
-  }
-  bool isImm16_31() const { return isImm(16, 31); }
-
-  bool isImm1_16() const { return isImm(1, 16); }
 
   /// getStartLoc - Gets location of the first token of this operand
   SMLoc getStartLoc() const override { return StartLoc; }
@@ -478,81 +463,47 @@ bool PCPUAsmParser::parseOperand(OperandVector &Operands, StringRef Mnemonic,
   return true;
 }
 
-bool PCPUAsmParser::ParseInstructionWithSR(ParseInstructionInfo &Info,
-                                             StringRef Name, SMLoc NameLoc,
-                                             OperandVector &Operands) {
-  if ((Name.startswith("wsr.") || Name.startswith("rsr.") ||
-       Name.startswith("xsr.")) &&
-      (Name.size() > 4)) {
-    // Parse case when instruction name is concatenated with SR register
-    // name, like "wsr.sar a1"
+// Split the mnemonic into ASM operand, conditional code and instruction.
+StringRef PCPUAsmParser::splitMnemonic(StringRef Name, SMLoc NameLoc,
+                                        OperandVector *Operands) {
 
-    // First operand is token for instruction
-    Operands.push_back(PCPUOperand::createToken(Name.take_front(3), NameLoc));
+  StringRef Mnemonic = Name;
 
-    StringRef RegName = Name.drop_front(4);
-    unsigned RegNo = MatchRegisterName(RegName);
+  // Match conditional jumps
+  if (Mnemonic[0] == 'j' &&
+      (!Mnemonic.startswith("jal") && !Mnemonic.startswith("jmp"))) {
+    // Parse instructions with a conditional code. For example, 'jne' is
+    // converted into two operands 'j' and 'ne'.
 
-    if (RegNo == 0) {
-      Error(NameLoc, "invalid register name");
-      return true;
+    LPCC::CondCode CondCode =
+        LPCC::suffixToPCPUCondCode(Mnemonic.substr(1));
+    if (CondCode != LPCC::UNKNOWN) {
+      Mnemonic = Mnemonic.slice(0, 1);
+      Operands->push_back(PCPUOperand::createToken(Mnemonic, NameLoc));
+      Operands->push_back(PCPUOperand::createImm(
+          MCConstantExpr::create(CondCode, getContext()), NameLoc, NameLoc));
+      return Mnemonic;
     }
-
-    // Parse operand
-    if (parseOperand(Operands, Name))
-      return true;
-
-    SMLoc S = getLoc();
-    SMLoc E = SMLoc::getFromPointer(S.getPointer() - 1);
-    Operands.push_back(PCPUOperand::createReg(RegNo, S, E));
-  } else {
-    // First operand is token for instruction
-    Operands.push_back(PCPUOperand::createToken(Name, NameLoc));
-
-    // Parse first operand
-    if (parseOperand(Operands, Name))
-      return true;
-
-    if (!getLexer().is(AsmToken::Comma)) {
-      SMLoc Loc = getLexer().getLoc();
-      getParser().eatToEndOfStatement();
-      return Error(Loc, "unexpected token");
-    }
-
-    getLexer().Lex();
-
-    // Parse second operand
-    if (parseOperand(Operands, Name, true))
-      return true;
   }
 
-  if (getLexer().isNot(AsmToken::EndOfStatement)) {
-    SMLoc Loc = getLexer().getLoc();
-    getParser().eatToEndOfStatement();
-    return Error(Loc, "unexpected token");
-  }
+  // First operand is token for instruction
+  Operands->push_back(PCPUOperand::createToken(Name, NameLoc));
 
-  getParser().Lex(); // Consume the EndOfStatement.
-  return false;
+  return Mnemonic;
 }
 
 bool PCPUAsmParser::ParseInstruction(ParseInstructionInfo &Info,
                                        StringRef Name, SMLoc NameLoc,
                                        OperandVector &Operands) {
-  if (Name.startswith("wsr") || Name.startswith("rsr") ||
-      Name.startswith("xsr")) {
-    return ParseInstructionWithSR(Info, Name, NameLoc, Operands);
-  }
-
-  // First operand is token for instruction
-  Operands.push_back(PCPUOperand::createToken(Name, NameLoc));
-
+  // First operand is token for instruction (pushes correct mnemonic for all ops, additionally splits and pushes first immediate for j**)
+  StringRef Mnemonic = splitMnemonic(Name, NameLoc, &Operands);
+  
   // If there are no more operands, then finish
   if (getLexer().is(AsmToken::EndOfStatement))
     return false;
 
   // Parse first operand
-  if (parseOperand(Operands, Name))
+  if (parseOperand(Operands, Mnemonic))
     return true;
 
   // Parse until end of statement, consuming commas between operands
@@ -561,7 +512,7 @@ bool PCPUAsmParser::ParseInstruction(ParseInstructionInfo &Info,
     getLexer().Lex();
 
     // Parse next operand
-    if (parseOperand(Operands, Name))
+    if (parseOperand(Operands, Mnemonic))
       return true;
   }
 
