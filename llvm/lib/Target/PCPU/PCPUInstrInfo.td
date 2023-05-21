@@ -385,7 +385,7 @@ let rd = 0, Defs = [FREG], isCompare = 1 in {
   def CMI: PCPUFri<0b0001101,
               (outs),
               (ins GPR: $rs1, i16imm: $imm),
-              "cmp $rs1, $imm",
+              "cmi $rs1, $imm",
               [(PCPUcmp i16:$rs1, (i16 imm:$imm))]
   >;
 }
@@ -425,6 +425,14 @@ let Defs = [SP], Uses = [SP] in {
 let isTerminator = 1, isReturn = 1, isBarrier = 1 in {
   def RET : Pseudo<(outs), (ins), "#RET", [(PCPUret)]>,
             PseudoInstExpansion<(SRS R6, 0)>;
+  
+  def IRT : PCPUFi<0b0011110,
+    (outs), (ins),
+    "irt",
+    []> {
+      let rd = 0;
+      let imm = 0;
+  }
 }
 
 //===----------------------------------------------------------------------===//
