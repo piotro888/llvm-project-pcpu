@@ -52,6 +52,9 @@ public:
                             const TargetRegisterClass *RegisterClass,
                             const TargetRegisterInfo *RegisterInfo,
                             Register VReg) const override;
+
+  // Lower some of pseudo instructions after register allocation.
+  bool expandPostRAPseudo(MachineInstr &MI) const override;
 };
 
 } // namespace llvm

@@ -409,6 +409,9 @@ let isCall = 1, Uses = [SP], Defs = [RCA] in { //FP?
                       (outs), (ins CallTarget:$imm),
                       "jal r6, $imm", [(PCPUcall imm:$imm)]>;
     }
+
+    def PseudoCALLr : Pseudo<(outs), (ins GPR:$rs),
+                             "#CALLR $rs", [(PCPUcall i16:$rs)]>;
 }
 
 // Call patterns

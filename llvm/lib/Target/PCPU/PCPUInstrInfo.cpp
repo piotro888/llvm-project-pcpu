@@ -11,6 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "PCPUInstrInfo.h"
+#include "MCTargetDesc/PCPUMCTargetDesc.h"
 #include "PCPUAluCode.h"
 #include "PCPUCondCode.h"
 #include "MCTargetDesc/PCPUBaseInfo.h"
@@ -84,3 +85,23 @@ void PCPUInstrInfo::loadRegFromStackSlot(
       .addImm(0);
 }
 
+bool PCPUInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
+    MachineBasicBlock &MBB = *MI.getParent();
+    if (MI.getOpcode() == PCPU::PseudoCALLr) {
+        // Convert pseudo indirect call to instruction sequence
+        // SRL r6, 0 ; LOAD PC TO r6 (JAL RETURN ADDRESS REG)
+        // ADI r6, r6, 12 ; OFFSET r6 TO POINT AT NEXT INSTRUCTION AFTER CALL (+3*4)
+        // SRS rx, 0 ; JUMP TO ADDRESS IN SPECIFIED REGISTER
+        
+        Register TargetReg = MI.getOperand(0).getReg();
+
+        BuildMI(MBB, MI, MI.getDebugLoc(), get(PCPU::SRL), PCPU::RCA).addImm(0);
+        BuildMI(MBB, MI, MI.getDebugLoc(), get(PCPU::ADI), PCPU::RCA).addReg(PCPU::RCA).addImm(12);
+        BuildMI(MBB, MI, MI.getDebugLoc(), get(PCPU::JIND)).addReg(TargetReg);
+        
+        MBB.erase(MI);
+        
+        return true; 
+    }
+    return false; // not expanded here
+}
