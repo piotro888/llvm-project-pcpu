@@ -69,6 +69,8 @@ def MOV : PCPUFr1<0b0000001,
     [] // why? loops with definition; not specified in other targets, must be called from C++
   >;
 
+def NOP : PCPUFi<0b0000000, (outs), (ins), "nop", []> {let rd=0; let imm=0;}
+
 let isReMaterializable = 1, isAsCheapAsAMove = 1 in {
 def LDI : PCPUFi<0b0000100,
     (outs GPR: $rd),
@@ -355,7 +357,7 @@ def MOD :
 //===----------------------------------------------------------------------===//
 
 let hasNoSchedulingInfo = 1, hasSideEffects = 1, mayLoad = 0, mayStore = 0 in {
-    def SRL : PCPUFri<0b0010000, 
+    def SRL : PCPUFri<0b0010000,
                       (outs GPR : $rd),
                       (ins  i16imm : $imm),
                       "srl $rd, $imm",
@@ -425,7 +427,7 @@ let Defs = [SP], Uses = [SP] in {
 let isTerminator = 1, isReturn = 1, isBarrier = 1 in {
   def RET : Pseudo<(outs), (ins), "#RET", [(PCPUret)]>,
             PseudoInstExpansion<(SRS R6, 0)>;
-  
+
   def IRT : PCPUFi<0b0011110,
     (outs), (ins),
     "irt",
@@ -433,6 +435,16 @@ let isTerminator = 1, isReturn = 1, isBarrier = 1 in {
       let rd = 0;
       let imm = 0;
   }
+}
+
+let isCall = 1 in {
+    def SYS : PCPUFi<0b0010010,
+        (outs), (ins),
+        "sys",
+        []> {
+          let rd = 0;
+          let imm = 0;
+    }
 }
 
 //===----------------------------------------------------------------------===//
@@ -451,7 +463,7 @@ let isBranch = 1, isTerminator = 1, isBarrier = 1 in {
                              "j$cond $target",
                             [(PCPUbrcc bb:$target, imm:$cond)]>;
   }
-  
+
   let isIndirectBranch = 1 in {
     def JIND : Pseudo<(outs), (ins GPR : $rs1), "#BRIND", [(brind GPR:$rs1)]>,
                PseudoInstExpansion<(SRS GPR:$rs1, 0)>;
