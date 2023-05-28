@@ -10,6 +10,7 @@
 #include "MCTargetDesc/PCPUFixupKinds.h"
 #include "llvm/BinaryFormat/ELF.h"
 #include "llvm/MC/MCELFObjectWriter.h"
+#include "llvm/MC/MCFixup.h"
 #include "llvm/MC/MCObjectWriter.h"
 #include "llvm/Support/ErrorHandling.h"
 
@@ -45,10 +46,22 @@ unsigned PCPUELFObjectWriter::getRelocType(MCContext & /*Ctx*/,
   switch (Kind) {
   case PCPU::FIXUP_PCPU_NONE:
     Type = ELF::R_PCPU_NONE;
+    break; 
+  case PCPU::FIXUP_PCPU_16: // emited for instruction reloc - instruction fields are big endian
+    Type = ELF::R_PCPU_16_BE;
     break;
-  case PCPU::FIXUP_PCPU_16:
+  case MCFixupKind::FK_Data_1: // emited for memory/asm
+    Type = ELF::R_PCPU_8;
+    break;
+  case MCFixupKind::FK_Data_2:
     Type = ELF::R_PCPU_16;
     break;
+  case MCFixupKind::FK_Data_4:
+    Type = ELF::R_PCPU_32; 
+    break;
+  case MCFixupKind::FK_Data_8:
+    Type = ELF::R_PCPU_64; 
+    break; 
   default:
     llvm_unreachable("Invalid fixup kind!");
   }
