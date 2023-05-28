@@ -289,6 +289,10 @@ unsigned PCPUMCCodeEmitter::getBranchTargetOpValue(
   if (MCOp.isReg() || MCOp.isImm())
     return getMachineOpValue(Inst, MCOp, Fixups, SubtargetInfo);
 
+  // create fixups for all jumps parsed from assembly
+  Fixups.push_back(MCFixup::create(
+      0, MCOp.getExpr(), static_cast<MCFixupKind>(PCPU::Fixups::FIXUP_PCPU_16)));
+
   return 0;
 }
 
