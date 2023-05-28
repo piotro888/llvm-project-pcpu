@@ -97,7 +97,8 @@ PCPUTargetLowering::PCPUTargetLowering(const TargetMachine &TM,
   }
 
   setOperationAction(ISD::UMUL_LOHI, MVT::i16, Expand);
-  // need to implelemt MULHU, MULHS
+  setOperationAction(ISD::MULHS, MVT::i16, LibCall);
+  setOperationAction(ISD::MULHU, MVT::i16, LibCall);
 
   setOperationAction(ISD::VASTART, MVT::Other, Custom);
   setOperationAction(ISD::VAARG, MVT::Other, Expand);
