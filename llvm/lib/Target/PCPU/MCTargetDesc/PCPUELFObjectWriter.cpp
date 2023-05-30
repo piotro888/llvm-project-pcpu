@@ -48,9 +48,9 @@ unsigned PCPUELFObjectWriter::getRelocType(MCContext & /*Ctx*/,
     Type = ELF::R_PCPU_NONE;
     break; 
   case PCPU::FIXUP_PCPU_16: // emited for instruction reloc - instruction fields are big endian
-    Type = ELF::R_PCPU_16_BE;
+    Type = ELF::R_PCPU_PC;
     break;
-  case MCFixupKind::FK_Data_1: // emited for memory/asm
+  case MCFixupKind::FK_Data_1: // emited for memory/asm, generic data types
     Type = ELF::R_PCPU_8;
     break;
   case MCFixupKind::FK_Data_2:

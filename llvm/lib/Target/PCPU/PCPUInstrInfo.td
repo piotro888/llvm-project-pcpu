@@ -49,10 +49,13 @@ def PCPUreadsreg : SDNode<"PCPUISD::READ_SREG", SDT_PCPUReadsreg, [SDNPHasChain]
 def PCPUwritesreg : SDNode<"PCPUISD::WRITE_SREG", SDT_PCPUWritesreg, [SDNPHasChain]>;
 
 // Types
-def CallTarget : Operand<i16>;
+def CallTarget : Operand<i16> {
+    let DecoderMethod = "decodeCallTargetOpValue";
+}
 // Branch targets have OtherVT type.
 def brtarget : Operand<OtherVT> {
   let EncoderMethod = "getBranchTargetOpValue";
+  let DecoderMethod = "decodeBranchTargetOpValue";
 }
 def CCOp : Operand<i16> {
   let PrintMethod = "printCCOperand";

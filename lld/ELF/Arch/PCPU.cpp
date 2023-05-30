@@ -39,7 +39,7 @@ PCPU::PCPU() {
 RelExpr PCPU::getRelExpr(RelType type, const Symbol &s,
                         const uint8_t *loc) const {
   switch (type) {
-  case R_PCPU_16_BE:
+  case R_PCPU_PC:
   case R_PCPU_8:
   case R_PCPU_16:
   case R_PCPU_32:
@@ -54,8 +54,10 @@ RelExpr PCPU::getRelExpr(RelType type, const Symbol &s,
 
 void PCPU::relocate(uint8_t *loc, const Relocation &rel, uint64_t val) const {
   switch (rel.type) {
-  case R_PCPU_16_BE:
-    write16be(loc, val);
+  case R_PCPU_PC:
+    // Instruction fields are encoded Big Endian.
+    // PC value in PCPU is not instruction address, but index - address divided by size (4)
+    write16be(loc, (val>>2));
     break;
   case R_PCPU_8:
     *loc = val;

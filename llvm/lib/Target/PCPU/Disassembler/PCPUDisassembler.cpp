@@ -45,6 +45,12 @@ PCPUDisassembler::PCPUDisassembler(const MCSubtargetInfo &STI, MCContext &Ctx)
 static DecodeStatus DecodeGPRRegisterClass(MCInst &Inst, unsigned RegNo,
                                            uint64_t Address,
                                            const MCDisassembler *Decoder);
+// custom decode for pc values
+static DecodeStatus decodeCallTargetOpValue(MCInst &Inst, unsigned Insn, uint64_t Address,
+                                 const MCDisassembler *Decoder);
+static DecodeStatus decodeBranchTargetOpValue(MCInst &Inst, unsigned Insn, uint64_t Address,
+                                 const MCDisassembler *Decoder);
+
 #include "PCPUGenDisassemblerTables.inc"
 
 static DecodeStatus readInstruction32(ArrayRef<uint8_t> Bytes, uint64_t &Size,
@@ -92,7 +98,7 @@ static const unsigned GPRDecoderTable[] = {
 DecodeStatus DecodeGPRRegisterClass(MCInst &Inst, unsigned RegNo,
                                     uint64_t /*Address*/,
                                     const MCDisassembler * /*Decoder*/) {
-  if (RegNo > 31)
+  if (RegNo > 7)
     return MCDisassembler::Fail;
 
   unsigned Reg = GPRDecoderTable[RegNo];
@@ -101,3 +107,21 @@ DecodeStatus DecodeGPRRegisterClass(MCInst &Inst, unsigned RegNo,
 }
 
 
+static DecodeStatus decodeBranchTargetOpValue(MCInst &Inst, unsigned Insn,
+                                   uint64_t Address,
+                                   const MCDisassembler *Decoder) {
+  unsigned Value = Insn<<2; // PC Values in PCPU arch are incremented by 1. This is instruction index; to get memory address multiply by instr size (4)
+  Inst.addOperand(MCOperand::createImm(Value));
+
+  return MCDisassembler::Success;
+}
+
+static DecodeStatus decodeCallTargetOpValue(MCInst &Inst, unsigned Insn,
+                                   uint64_t Address,
+                                   const MCDisassembler *Decoder) {
+  unsigned Value = Insn<<2;
+  Inst.addOperand(MCOperand::createImm(Value));
+
+  return MCDisassembler::Success;
+
+}
