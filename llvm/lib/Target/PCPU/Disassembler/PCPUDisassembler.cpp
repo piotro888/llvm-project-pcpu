@@ -61,9 +61,9 @@ static DecodeStatus readInstruction32(ArrayRef<uint8_t> Bytes, uint64_t &Size,
     return MCDisassembler::Fail;
   }
 
-  // Encoded as big-endian 32-bit word in the stream.
+  // Encoded as little-endian 32-bit word in the stream.
   Insn =
-      (Bytes[0] << 24) | (Bytes[1] << 16) | (Bytes[2] << 8) | (Bytes[3] << 0);
+      (Bytes[0] << 0) | (Bytes[1] << 8) | (Bytes[2] << 16) | (Bytes[3] << 24);
 
   return MCDisassembler::Success;
 }

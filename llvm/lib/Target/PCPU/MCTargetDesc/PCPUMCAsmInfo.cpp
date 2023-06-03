@@ -20,7 +20,7 @@ void PCPUMCAsmInfo::anchor() {}
 
 PCPUMCAsmInfo::PCPUMCAsmInfo(const Triple & /*TheTriple*/,
                                const MCTargetOptions &Options) {
-  IsLittleEndian = false;
+  IsLittleEndian = true;
   PrivateGlobalPrefix = ".L";
   WeakRefDirective = "\t.weak\t";
   ExceptionsType = ExceptionHandling::DwarfCFI;

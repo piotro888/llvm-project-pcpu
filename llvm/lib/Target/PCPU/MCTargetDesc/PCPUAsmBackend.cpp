@@ -41,7 +41,7 @@ class PCPUAsmBackend : public MCAsmBackend {
 
 public:
   PCPUAsmBackend(const Target &T, Triple::OSType OST)
-      : MCAsmBackend(support::big), OSType(OST) {}
+      : MCAsmBackend(support::little), OSType(OST) {}
 
   void applyFixup(const MCAssembler &Asm, const MCFixup &Fixup,
                   const MCValue &Target, MutableArrayRef<char> Data,
