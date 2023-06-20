@@ -27,6 +27,9 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include "llvm/IR/GlobalValue.h"
+#include "llvm/IR/Function.h"
+
 using namespace llvm;
 
 MCSymbol *
@@ -67,19 +70,21 @@ MCOperand PCPUMCInstLower::LowerSymbolOperand(const MachineOperand &MO,
                                                MCSymbol *Sym) const {
   PCPUMCExpr::VariantKind Kind;
 
-  switch (MO.getTargetFlags()) {
-  case PCPUII::MO_NO_FLAG:
-    Kind = PCPUMCExpr::VK_PCPU_None;
-    break;
-  default:
+  if(MO.getTargetFlags() != PCPUII::MO_NO_FLAG)
     llvm_unreachable("Unknown target flag on GV operand");
-  }
 
-  const MCExpr *Expr =
-      MCSymbolRefExpr::create(Sym, MCSymbolRefExpr::VK_None, Ctx);
+  const MCExpr *Expr = MCSymbolRefExpr::create(Sym, MCSymbolRefExpr::VK_None, Ctx);
+
   if (!MO.isJTI() && MO.getOffset())
     Expr = MCBinaryExpr::createAdd(
         Expr, MCConstantExpr::create(MO.getOffset(), Ctx), Ctx);
+  
+  bool IsFunction =  MO.isGlobal() && (isa<Function>(MO.getGlobal()));
+  if (IsFunction)
+    Kind = PCPUMCExpr::VK_PCPU_PC_ADDR;
+  else
+    Kind = PCPUMCExpr::VK_PCPU_None;
+  
   Expr = PCPUMCExpr::create(Kind, Expr, Ctx);
   return MCOperand::createExpr(Expr);
 }

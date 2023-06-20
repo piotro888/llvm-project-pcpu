@@ -12,11 +12,13 @@
 #include "llvm/MC/MCExpr.h"
 #include "llvm/MC/MCValue.h"
 
+#include "PCPUFixupKinds.h"
+
 namespace llvm {
 
 class PCPUMCExpr : public MCTargetExpr {
 public:
-  enum VariantKind { VK_PCPU_None };
+  enum VariantKind { VK_PCPU_None, VK_PCPU_PC_ADDR };
 
 private:
   const VariantKind Kind;
@@ -42,6 +44,9 @@ public:
   MCFragment *findAssociatedFragment() const override {
     return getSubExpr()->findAssociatedFragment();
   }
+
+  /// Gets the fixup which corresponds to the expression.
+  PCPU::Fixups getFixupKind() const;
 
   // There are no TLS PCPUMCExprs at the moment.
   void fixELFSymbolsInTLSFixups(MCAssembler & /*Asm*/) const override {}

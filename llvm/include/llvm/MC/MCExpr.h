@@ -313,6 +313,8 @@ public:
     VK_PPC_NOTOC,           // symbol@notoc
     VK_PPC_PCREL_OPT,       // .reloc expr, R_PPC64_PCREL_OPT, expr
 
+    VK_PCPU_PC_REF,
+
     VK_COFF_IMGREL32, // symbol@imgrel (image-relative)
 
     VK_Hexagon_LO16,

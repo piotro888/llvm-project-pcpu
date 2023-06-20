@@ -50,6 +50,7 @@ def PCPUwritesreg : SDNode<"PCPUISD::WRITE_SREG", SDT_PCPUWritesreg, [SDNPHasCha
 
 // Types
 def CallTarget : Operand<i16> {
+    let EncoderMethod = "getCallTargetOpValue";
     let DecoderMethod = "decodeCallTargetOpValue";
 }
 // Branch targets have OtherVT type.

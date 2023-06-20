@@ -5,9 +5,11 @@
 
 // No relocation
 ELF_RELOC(R_PCPU_NONE,        0)
-// General 16-bit relocation
-ELF_RELOC(R_PCPU_PC,          1)
-ELF_RELOC(R_PCPU_8,           2)
-ELF_RELOC(R_PCPU_16,          3)
-ELF_RELOC(R_PCPU_32,          4)
-ELF_RELOC(R_PCPU_64,          5)
+ELF_RELOC(R_PCPU_8,           1)
+ELF_RELOC(R_PCPU_16,          2)
+ELF_RELOC(R_PCPU_32,          3)
+ELF_RELOC(R_PCPU_64,          4)
+ELF_RELOC(R_PCPU_16_IMM,      5)
+ELF_RELOC(R_PCPU_16_PC_INSTR, 6)
+ELF_RELOC(R_PCPU_16_PC_REF,   7)
+

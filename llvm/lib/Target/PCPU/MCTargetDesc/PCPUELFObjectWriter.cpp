@@ -13,6 +13,8 @@
 #include "llvm/MC/MCFixup.h"
 #include "llvm/MC/MCObjectWriter.h"
 #include "llvm/Support/ErrorHandling.h"
+#include "llvm/MC/MCValue.h"
+#include "llvm/MC/MCExpr.h"
 
 using namespace llvm;
 
@@ -38,23 +40,34 @@ PCPUELFObjectWriter::PCPUELFObjectWriter(uint8_t OSABI)
                               /*HasRelocationAddend_=*/true) {}
 
 unsigned PCPUELFObjectWriter::getRelocType(MCContext & /*Ctx*/,
-                                            const MCValue & /*Target*/,
+                                            const MCValue & Target,
                                             const MCFixup &Fixup,
                                             bool /*IsPCRel*/) const {
   unsigned Type;
   unsigned Kind = static_cast<unsigned>(Fixup.getKind());
+  MCSymbolRefExpr::VariantKind Modifier = Target.getAccessVariant();
   switch (Kind) {
   case PCPU::FIXUP_PCPU_NONE:
     Type = ELF::R_PCPU_NONE;
     break; 
-  case PCPU::FIXUP_PCPU_16: // emited for instruction reloc - instruction fields are big endian
-    Type = ELF::R_PCPU_PC;
+  case PCPU::FIXUP_PCPU_IMM: // emited for standard instruction relloc
+    Type = ELF::R_PCPU_16_IMM;
     break;
-  case MCFixupKind::FK_Data_1: // emited for memory/asm, generic data types
+  case PCPU::FIXUP_PCPU_PC: // emited for instruction reloc on pc address
+    Type = ELF::R_PCPU_16_PC_INSTR;
+    break;
+  case MCFixupKind::FK_Data_1: // emited for standard memory content, generic data types
     Type = ELF::R_PCPU_8;
     break;
   case MCFixupKind::FK_Data_2:
-    Type = ELF::R_PCPU_16;
+   switch (Modifier) {
+    default:
+      llvm_unreachable("Unsupported Modifier");
+    case MCSymbolRefExpr::VK_None:
+      return ELF::R_PCPU_16;
+    case MCSymbolRefExpr::VK_PCPU_PC_REF:
+      return ELF::R_PCPU_16_PC_REF;
+    }
     break;
   case MCFixupKind::FK_Data_4:
     Type = ELF::R_PCPU_32; 

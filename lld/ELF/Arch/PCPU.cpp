@@ -39,12 +39,15 @@ PCPU::PCPU() {
 RelExpr PCPU::getRelExpr(RelType type, const Symbol &s,
                         const uint8_t *loc) const {
   switch (type) {
-  case R_PCPU_PC:
+  case R_PCPU_16_IMM:
   case R_PCPU_8:
   case R_PCPU_16:
   case R_PCPU_32:
-  case R_PCPU_64: //??
-     return R_ABS;
+  case R_PCPU_64:
+    return R_ABS;
+  case R_PCPU_16_PC_INSTR:
+  case R_PCPU_16_PC_REF:
+    return R_ABS; // R_PC breaks - makes relative jumps
   default:
     error(getErrorLocation(loc) + "unknown relocation (" + Twine(type) +
           ") against symbol " + toString(s));
@@ -54,11 +57,6 @@ RelExpr PCPU::getRelExpr(RelType type, const Symbol &s,
 
 void PCPU::relocate(uint8_t *loc, const Relocation &rel, uint64_t val) const {
   switch (rel.type) {
-  case R_PCPU_PC:
-    // PC field is located at offset 2 in little-endian instrucion encoding
-    // PC value in PCPU is not instruction address, but index - address divided by size (4)
-    write16le(loc+2, (val>>2));
-    break;
   case R_PCPU_8:
     *loc = val;
     break;
@@ -70,6 +68,17 @@ void PCPU::relocate(uint8_t *loc, const Relocation &rel, uint64_t val) const {
     break;
   case R_PCPU_64:
     write64le(loc, val);
+    break;
+  case R_PCPU_16_PC_INSTR:
+    // offset for instruction field
+    // PC value in PCPU is not instruction address, but index - address divided by size (4)
+    write16le(loc+2, (val>>2));
+    break;
+  case R_PCPU_16_IMM:
+    write16le(loc+2, val);
+    break;
+  case R_PCPU_16_PC_REF: // pc reference (indirect)
+    write16le(loc, (val>>2));
     break;
   default:
     llvm_unreachable("unknown relocation");

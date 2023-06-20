@@ -16,6 +16,7 @@
 #include "PCPUInstrInfo.h"
 #include "PCPUMCInstLower.h"
 #include "PCPUTargetMachine.h"
+#include "MCTargetDesc/PCPUMCExpr.h"
 #include "MCTargetDesc/PCPUInstPrinter.h"
 #include "TargetInfo/PCPUTargetInfo.h"
 #include "llvm/CodeGen/AsmPrinter.h"
@@ -52,6 +53,8 @@ public:
   bool PrintAsmOperand(const MachineInstr *MI, unsigned OpNo,
                        const char *ExtraCode, raw_ostream &O) override;
   void emitInstruction(const MachineInstr *MI) override;
+
+  const MCExpr *lowerConstant(const Constant *CV) override;
   
   bool emitPseudoExpansionLowering(MCStreamer &OutStreamer,
                                    const MachineInstr *MI);
@@ -145,6 +148,21 @@ bool PCPUAsmPrinter::PrintAsmOperand(const MachineInstr *MI, unsigned OpNo,
   }
   printOperand(MI, OpNo, O);
   return false;
+}
+
+
+const MCExpr *PCPUAsmPrinter::lowerConstant(const Constant *CV) {
+  // This is a key to PC references fixups in memory (not connected to insns)
+  MCContext &Ctx = OutContext;
+
+  if (const GlobalValue *GV = dyn_cast<GlobalValue>(CV)) {
+      // program memory reference
+      if(isa<Function>(GV)) {
+        const MCExpr *Expr = MCSymbolRefExpr::create(getSymbol(GV), Ctx);
+        return PCPUMCExpr::create(PCPUMCExpr::VK_PCPU_PC_ADDR, Expr, Ctx);
+      }
+  }
+  return AsmPrinter::lowerConstant(CV);
 }
 
 // Simple pseudo-instructions have their lowering (with expansion to real

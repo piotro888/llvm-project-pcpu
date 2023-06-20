@@ -58,6 +58,9 @@ public:
                              SmallVectorImpl<MCFixup> &Fixups,
                              const MCSubtargetInfo &SubtargetInfo) const;
 
+  unsigned getExprOpValue(const MCExpr *Expr, SmallVectorImpl<MCFixup> &Fixups,
+                          const MCSubtargetInfo &STI) const;
+
   unsigned getRiMemoryOpValue(const MCInst &Inst, unsigned OpNo,
                               SmallVectorImpl<MCFixup> &Fixups,
                               const MCSubtargetInfo &SubtargetInfo) const;
@@ -73,7 +76,9 @@ public:
   unsigned getBranchTargetOpValue(const MCInst &Inst, unsigned OpNo,
                                   SmallVectorImpl<MCFixup> &Fixups,
                                   const MCSubtargetInfo &SubtargetInfo) const;
-
+  unsigned getCallTargetOpValue(const MCInst &Inst, unsigned OpNo,
+                                  SmallVectorImpl<MCFixup> &Fixups,
+                                  const MCSubtargetInfo &SubtargetInfo) const;
   void encodeInstruction(const MCInst &Inst, raw_ostream &Ostream,
                          SmallVectorImpl<MCFixup> &Fixups,
                          const MCSubtargetInfo &SubtargetInfo) const override;
@@ -87,45 +92,43 @@ public:
 
 } // end anonymous namespace
 
-static PCPU::Fixups FixupKind(const MCExpr *Expr) {
-  if (isa<MCSymbolRefExpr>(Expr)) // labels, consts
-    return PCPU::FIXUP_PCPU_16;
-  
-  if (const PCPUMCExpr *McExpr = dyn_cast<PCPUMCExpr>(Expr)) {
-    PCPUMCExpr::VariantKind ExprKind = McExpr->getKind();
-    switch (ExprKind) {
-    case PCPUMCExpr::VK_PCPU_None: // everything for now, can be 16 bit hi/lo later based on flags (see lanai)
-      return PCPU::FIXUP_PCPU_16;
-    }
+unsigned PCPUMCCodeEmitter::getExprOpValue(const MCExpr *Expr,
+                                          SmallVectorImpl<MCFixup> &Fixups,
+                                          const MCSubtargetInfo &STI) const {
+
+  MCExpr::ExprKind Kind = Expr->getKind();
+
+  if (Kind == MCExpr::Binary) {
+    Expr = static_cast<const MCBinaryExpr *>(Expr)->getLHS();
+    Kind = Expr->getKind();
   }
-  return PCPU::Fixups(0); // illegal
+
+  if (Kind == MCExpr::Target) {
+    PCPUMCExpr const *PCPUExpr = cast<PCPUMCExpr>(Expr);
+  
+
+    MCFixupKind FixupKind = static_cast<MCFixupKind>(PCPUExpr->getFixupKind());
+    Fixups.push_back(MCFixup::create(0, PCPUExpr, FixupKind));
+    return 0;
+  }
+
+  assert(Kind == MCExpr::SymbolRef);
+  return 0;
 }
 
-// getMachineOpValue - Return binary encoding of operand. If the machine
-// operand requires relocation, record the relocation and return zero.
-unsigned PCPUMCCodeEmitter::getMachineOpValue(
-    const MCInst &Inst, const MCOperand &MCOp, SmallVectorImpl<MCFixup> &Fixups,
-    const MCSubtargetInfo &SubtargetInfo) const {
-  if (MCOp.isReg())
-    return getPCPURegisterNumbering(MCOp.getReg());
-  if (MCOp.isImm())
-    return static_cast<unsigned>(MCOp.getImm());
+unsigned PCPUMCCodeEmitter::getMachineOpValue(const MCInst &MI,
+                                             const MCOperand &MO,
+                                             SmallVectorImpl<MCFixup> &Fixups,
+                                             const MCSubtargetInfo &STI) const {
+  if (MO.isReg())
+    return getPCPURegisterNumbering(MO.getReg());
+  if (MO.isImm())
+    return static_cast<unsigned>(MO.getImm());
 
-  // MCOp must be an expression
-  assert(MCOp.isExpr());
-  const MCExpr *Expr = MCOp.getExpr();
+  // MO must be an Expr.
+  assert(MO.isExpr());
 
-  // Extract the symbolic reference side of a binary expression.
-  if (Expr->getKind() == MCExpr::Binary) {
-    const MCBinaryExpr *BinaryExpr = static_cast<const MCBinaryExpr *>(Expr);
-    Expr = BinaryExpr->getLHS();
-  }
-
-  assert(isa<PCPUMCExpr>(Expr) || Expr->getKind() == MCExpr::SymbolRef);
-  // Push fixup (all info is contained within)
-  Fixups.push_back(
-      MCFixup::create(0, MCOp.getExpr(), MCFixupKind(FixupKind(Expr))));
-  return 0;
+  return getExprOpValue(MO.getExpr(), Fixups, STI);
 }
 
 // Helper function to adjust P and Q bits on load and store instructions.
@@ -289,10 +292,24 @@ unsigned PCPUMCCodeEmitter::getBranchTargetOpValue(
   if (MCOp.isReg() || MCOp.isImm())
     return getMachineOpValue(Inst, MCOp, Fixups, SubtargetInfo);
 
-  // create fixups for all jumps parsed from assembly
+  // create fixups for all jumps paresed from assembly
   Fixups.push_back(MCFixup::create(
-      0, MCOp.getExpr(), static_cast<MCFixupKind>(PCPU::Fixups::FIXUP_PCPU_16)));
+      0, MCOp.getExpr(), static_cast<MCFixupKind>(PCPU::Fixups::FIXUP_PCPU_PC)));
+  
+  return 0;
+}
 
+unsigned PCPUMCCodeEmitter::getCallTargetOpValue(
+    const MCInst &Inst, unsigned OpNo, SmallVectorImpl<MCFixup> &Fixups,
+    const MCSubtargetInfo &SubtargetInfo) const {
+  const MCOperand &MCOp = Inst.getOperand(OpNo);
+  if (MCOp.isReg() || MCOp.isImm())
+    return getMachineOpValue(Inst, MCOp, Fixups, SubtargetInfo);
+
+  // create fixups for all jumps paresed from assembly
+  Fixups.push_back(MCFixup::create(
+      0, MCOp.getExpr(), static_cast<MCFixupKind>(PCPU::Fixups::FIXUP_PCPU_PC)));
+  
   return 0;
 }
 

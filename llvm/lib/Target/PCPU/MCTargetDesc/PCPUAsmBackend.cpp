@@ -27,9 +27,10 @@ static unsigned adjustFixupValue(unsigned Kind, uint64_t Value) {
   case FK_Data_2:
   case FK_Data_4:
   case FK_Data_8:
+  case PCPU::FIXUP_PCPU_IMM:
     return Value;
-  case PCPU::FIXUP_PCPU_16:
-    return Value;
+  case PCPU::FIXUP_PCPU_PC:
+    return Value >> 2;
   default:
     llvm_unreachable("Unknown fixup kind!");
   }
@@ -90,30 +91,23 @@ void PCPUAsmBackend::applyFixup(const MCAssembler &Asm, const MCFixup &Fixup,
   if (!Value)
     return; // This value doesn't change the encoding
 
-  // Where in the object and where the number of bytes that need
-  // fixing up
+  MCFixupKindInfo Info = getFixupKindInfo(Fixup.getKind());
+
+  // The number of bits in the fixup mask
+  auto NumBits = Info.TargetSize + Info.TargetOffset;
+  auto NumBytes = ((NumBits+7) / 8);
+
+  // Shift the value into position.
+  Value <<= Info.TargetOffset;
+
   unsigned Offset = Fixup.getOffset();
-  unsigned NumBytes = (getFixupKindInfo(Kind).TargetSize + 7) / 8;
-  unsigned FullSize = 4;
+  assert(Offset + NumBytes <= Data.size() && "Invalid fixup offset!");
 
-  // Grab current value, if any, from bits.
-  uint64_t CurVal = 0;
-
-  // Load instruction and apply value
-  for (unsigned i = 0; i != NumBytes; ++i) {
-    unsigned Idx = (FullSize - 1 - i);
-    CurVal |= static_cast<uint64_t>(static_cast<uint8_t>(Data[Offset + Idx]))
-              << (i * 8);
-  }
-
-  uint64_t Mask =
-      (static_cast<uint64_t>(-1) >> (64 - getFixupKindInfo(Kind).TargetSize));
-  CurVal |= Value & Mask;
-
-  // Write out the fixed up bytes back to the code/data bits.
-  for (unsigned i = 0; i != NumBytes; ++i) {
-    unsigned Idx = (FullSize - 1 - i);
-    Data[Offset + Idx] = static_cast<uint8_t>((CurVal >> (i * 8)) & 0xff);
+  // For each byte of the fragment that the fixup touches, mask in the
+  // bits from the fixup value.
+  for (unsigned i = 0; i < NumBytes; ++i) {
+    uint8_t mask = (((Value >> (i * 8)) & 0xff));
+    Data[Offset + i] |= mask;
   }
 }
 
@@ -127,16 +121,10 @@ PCPUAsmBackend::getFixupKindInfo(MCFixupKind Kind) const {
   static const MCFixupKindInfo Infos[PCPU::NumTargetFixupKinds] = {
       // This table *must* be in same the order of fixup_* kinds in
       // PCPUFixupKinds.h.
-      // Note: The number of bits indicated here are assumed to be contiguous.
-      //   This does not hold true for PCPU_21 and PCPU_21_F which are applied
-      //   to bits 0x7cffff and 0x7cfffc, respectively. Since the 'bits' counts
-      //   here are used only for cosmetic purposes, we set the size to 16 bits
-      //   for these 21-bit relocation as llvm/lib/MC/MCAsmStreamer.cpp checks
-      //   no bits are set in the fixup range.
-      //
       // name          offset bits flags
       {"FIXUP_PCPU_NONE", 0, 16, 0},
-      {"FIXUP_PCPU_16", 0, 16, 0}
+      {"FIXUP_PCPU_IMM", 16, 16, 0},
+      {"FIXUP_PCPU_PC", 16, 16, 0},
   };    
 
   if (Kind < FirstTargetFixupKind)

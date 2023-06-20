@@ -25,12 +25,18 @@ enum Fixups {
   // Results in R_PCPU_NONE
   FIXUP_PCPU_NONE = FirstTargetFixupKind,
 
-  FIXUP_PCPU_16, // Generic 16-bit fixup
+  FIXUP_PCPU_IMM, // Fixup for standard 16-bit imm field in instruction (L/S instructions)
+  FIXUP_PCPU_PC, // PC fixup - 16 bit address >> by 2 in instruction
+ // FIXUP_PCPU_PC_ADDR, // reference to PC address in data
 
   // Marker
   LastTargetFixupKind,
   NumTargetFixupKinds = LastTargetFixupKind - FirstTargetFixupKind
 };
+
+// PCPU PC is word-addressed. Instruction addresses need to be adjusted.
+template <typename T> inline void adjustBranchTarget(T &val) { val >>= 2; }
+
 } // namespace PCPU
 } // namespace llvm
 
