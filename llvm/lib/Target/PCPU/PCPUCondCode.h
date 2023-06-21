@@ -17,9 +17,10 @@ enum CondCode {
   ICC_GE = 6,
   ICC_NE = 7,
   ICC_OVF = 8,
-  ICC_GTU = 9,
-  ICC_GEU = 10,
-  ICC_LEU = 11,
+  ICC_PAR = 9,
+  ICC_GTU = 10,
+  ICC_GEU = 11,
+  ICC_LEU = 12,
   UNKNOWN
 };
 
@@ -43,6 +44,8 @@ inline static StringRef PCPUCondCodeToString(LPCC::CondCode CC) {
     return "ne";
   case LPCC::ICC_OVF:
     return "ov";
+  case LPCC::ICC_PAR:
+    return "par";
   case LPCC::ICC_GTU:
     return "gtu";
   case LPCC::ICC_LEU:
@@ -67,6 +70,7 @@ inline static CondCode suffixToPCPUCondCode(StringRef S) {
       .EndsWith("gt", LPCC::ICC_GT)
       .EndsWith("le", LPCC::ICC_LE)
       .EndsWith("ca", LPCC::ICC_CA)
+      .EndsWith("par", LPCC::ICC_PAR)
       .EndsWith("mp", LPCC::ICC_T)
       .Default(LPCC::UNKNOWN);
 }
