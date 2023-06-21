@@ -1226,6 +1226,8 @@ unsigned MachineJumpTableInfo::getEntrySize(const DataLayout &TD) const {
   case MachineJumpTableInfo::EK_LabelDifference32:
   case MachineJumpTableInfo::EK_Custom32:
     return 4;
+  case MachineJumpTableInfo::EK_Custom16:
+    return 2;
   case MachineJumpTableInfo::EK_Inline:
     return 0;
   }
@@ -1246,6 +1248,8 @@ unsigned MachineJumpTableInfo::getEntryAlignment(const DataLayout &TD) const {
   case MachineJumpTableInfo::EK_LabelDifference32:
   case MachineJumpTableInfo::EK_Custom32:
     return TD.getABIIntegerTypeAlignment(32).value();
+  case MachineJumpTableInfo::EK_Custom16:
+    return TD.getABIIntegerTypeAlignment(16).value();
   case MachineJumpTableInfo::EK_Inline:
     return 1;
   }

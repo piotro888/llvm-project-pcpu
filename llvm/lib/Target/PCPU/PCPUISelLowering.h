@@ -105,6 +105,13 @@ public:
 
   MachineBasicBlock *expandSelectCC(MachineInstr &MI, MachineBasicBlock *BB) const;
 
+  unsigned getJumpTableEncoding() const override;
+
+  const MCExpr *LowerCustomJumpTableEntry(const MachineJumpTableInfo *MJTI,
+                                          const MachineBasicBlock *MBB,
+                                          unsigned uid,
+                                          MCContext &Ctx) const override;
+
 private:
   SDValue LowerCCCCallTo(SDValue Chain, SDValue Callee,
                          CallingConv::ID CallConv, bool IsVarArg,

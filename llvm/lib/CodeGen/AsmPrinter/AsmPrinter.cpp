@@ -2545,6 +2545,7 @@ void AsmPrinter::emitJumpTableEntry(const MachineJumpTableInfo *MJTI,
   case MachineJumpTableInfo::EK_Inline:
     llvm_unreachable("Cannot emit EK_Inline jump table entry");
   case MachineJumpTableInfo::EK_Custom32:
+  case MachineJumpTableInfo::EK_Custom16:
     Value = MF->getSubtarget().getTargetLowering()->LowerCustomJumpTableEntry(
         MJTI, MBB, UID, OutContext);
     break;

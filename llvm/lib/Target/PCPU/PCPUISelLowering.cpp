@@ -28,6 +28,7 @@
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/MachineMemOperand.h"
+#include "llvm/CodeGen/MachineJumpTableInfo.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/CodeGen/RuntimeLibcalls.h"
 #include "llvm/CodeGen/SelectionDAG.h"
@@ -780,4 +781,15 @@ SDValue PCPUTargetLowering::LowerJumpTable(SDValue Op,
         JT->getIndex(), getPointerTy(DAG.getDataLayout()), PCPUII::MO_NO_FLAG);
 
   return DAG.getNode(PCPUISD::WRAPPER, DL, MVT::i16, Small);
+}
+
+unsigned PCPUTargetLowering::getJumpTableEncoding() const {
+  // use custom LowerCustomJumpTableEntry Hook
+  return MachineJumpTableInfo::EK_Custom16;
+}
+
+const MCExpr *PCPUTargetLowering::LowerCustomJumpTableEntry(
+    const MachineJumpTableInfo *MJTI, const MachineBasicBlock *MBB,
+    unsigned uid, MCContext &Ctx) const {
+            return MCSymbolRefExpr::create(MBB->getSymbol(), MCSymbolRefExpr::VK_PCPU_PC_REF, Ctx); // variant kind can be added :)
 }
