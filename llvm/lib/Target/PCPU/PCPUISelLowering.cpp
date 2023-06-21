@@ -17,6 +17,7 @@
 #include "PCPUSubtarget.h"
 #include "PCPUTargetObjectFile.h"
 #include "MCTargetDesc/PCPUBaseInfo.h"
+#include "MCTargetDesc/PCPUMCExpr.h"
 #include "llvm/ADT/APInt.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/SmallVector.h"
@@ -392,8 +393,11 @@ SDValue PCPUTargetLowering::LowerCCCArguments(
   SmallVector<CCValAssign, 8> ArgLocs;
   CCState CCInfo(CallConv, IsVarArg, DAG.getMachineFunction(), ArgLocs,
                  *DAG.getContext());
-
-  CCInfo.AnalyzeFormalArguments(Ins, PCPU_CCallingConv);
+    
+  if(IsVarArg)
+    CCInfo.AnalyzeFormalArguments(Ins, PCPU_CCallingConv_VaArg);
+  else
+    CCInfo.AnalyzeFormalArguments(Ins, PCPU_CCallingConv);
 
   for (unsigned i = 0, e = ArgLocs.size(); i != e; ++i) {
     CCValAssign &VA = ArgLocs[i];
@@ -467,7 +471,7 @@ SDValue PCPUTargetLowering::LowerCCCArguments(
   if (IsVarArg) {
     // Record the frame index of the first variable argument
     // which is a value necessary to VASTART.
-    int FI = MFI.CreateFixedObject(4, CCInfo.getNextStackOffset(), true);
+    int FI = MFI.CreateFixedObject(2, CCInfo.getNextStackOffset(), true);
     PCPUMFI->setVarArgsFrameIndex(FI);
  }
 

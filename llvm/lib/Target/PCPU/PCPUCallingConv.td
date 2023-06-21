@@ -25,7 +25,8 @@ def PCPU_CCallingConv : CallingConv<[
 
 // Pass all args on stack if VA_ARGS.
 def PCPU_CCallingConv_VaArg : CallingConv<[
-  CCAssignToStack<1, 1>,
+  // Promote i8 args to i16
+  CCIfType<[i8, i16], CCPromoteToType<i16>>,
   CCAssignToStack<2, 2>
 ]>;
 
