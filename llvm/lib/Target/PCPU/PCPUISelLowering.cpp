@@ -472,7 +472,7 @@ SDValue PCPUTargetLowering::LowerCCCArguments(
   if (IsVarArg) {
     // Record the frame index of the first variable argument
     // which is a value necessary to VASTART.
-    int FI = MFI.CreateFixedObject(2, CCInfo.getNextStackOffset(), true);
+    int FI = MFI.CreateFixedObject(2, CCInfo.getNextStackOffset()+2, true);
     PCPUMFI->setVarArgsFrameIndex(FI);
  }
 
