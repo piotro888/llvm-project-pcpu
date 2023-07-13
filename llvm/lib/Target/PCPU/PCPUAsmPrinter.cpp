@@ -53,6 +53,9 @@ public:
   void printOperand(const MachineInstr *MI, int OpNum, raw_ostream &O);
   bool PrintAsmOperand(const MachineInstr *MI, unsigned OpNo,
                        const char *ExtraCode, raw_ostream &O) override;
+  bool PrintAsmMemoryOperand(const MachineInstr *MI,
+                                          unsigned OpNum, const char *ExtraCode,
+                                          raw_ostream &O) override;
   void emitInstruction(const MachineInstr *MI) override;
 
   const MCExpr *lowerConstant(const Constant *CV) override;
@@ -151,6 +154,23 @@ bool PCPUAsmPrinter::PrintAsmOperand(const MachineInstr *MI, unsigned OpNo,
   return false;
 }
 
+bool PCPUAsmPrinter::PrintAsmMemoryOperand(const MachineInstr *MI,
+                                          unsigned OpNum, const char *ExtraCode,
+                                          raw_ostream &O) {
+  assert(OpNum + 1 < MI->getNumOperands() && "Insufficient operands");
+  const MachineOperand &BaseMO = MI->getOperand(OpNum);
+  const MachineOperand &OffsetMO = MI->getOperand(OpNum + 1);
+  assert(BaseMO.isReg() && "Unexpected base pointer for inline asm memory operand.");
+  assert(OffsetMO.isImm() && "Unexpected offset for inline asm memory operand.");
+  int Offset = OffsetMO.getImm();
+
+  if (ExtraCode)
+    return true; // Unknown modifier.
+
+  O << PCPUInstPrinter::getRegisterName(BaseMO.getReg()) << "," << Offset;
+
+  return false;
+}
 
 const MCExpr *PCPUAsmPrinter::lowerConstant(const Constant *CV) {
   // This is a key to PC references fixups in memory (not connected to insns)

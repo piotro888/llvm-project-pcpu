@@ -62,6 +62,11 @@ private:
   // Support functions for the opcodes of Instruction Selection
   // not handled by the auto-generated tablgen
   void selectFrameIndex(SDNode *N);
+
+  bool SelectInlineAsmMemoryOperand(const SDValue &Op, unsigned ConstraintCode,
+                                  std::vector<SDValue> &OutOps) override;
+
+  bool SelectAddr(SDValue Addr, SDValue &Base, SDValue &Offset);
 };
 
 } // namespace
@@ -110,6 +115,60 @@ void PCPUDAGToDAGISel::selectFrameIndex(SDNode *Node) {
     return;
   }
   ReplaceNode(Node, CurDAG->getMachineNode(Opc, DL, VT, TFI, Imm));
+}
+
+bool PCPUDAGToDAGISel::SelectAddr(SDValue Addr, SDValue &Base, SDValue &Offset) {
+  // if Address is FI, get the TargetFrameIndex.
+  SDLoc DL(Addr);
+  if (auto *FIN = dyn_cast<FrameIndexSDNode>(Addr)) {
+    Base = CurDAG->getTargetFrameIndex(FIN->getIndex(), MVT::i16);
+    Offset = CurDAG->getTargetConstant(0, DL, MVT::i16);
+    return true;
+  }
+
+  if (Addr.getOpcode() == ISD::TargetExternalSymbol ||
+      Addr.getOpcode() == ISD::TargetGlobalAddress)
+    return false;
+
+  // Addresses of the form Addr+const or Addr|const
+  if (CurDAG->isBaseWithConstantOffset(Addr)) {
+    auto *CN = cast<ConstantSDNode>(Addr.getOperand(1));
+    if (isInt<16>(CN->getSExtValue())) {
+      // If the first operand is a FI, get the TargetFI Node
+      if (auto *FIN = dyn_cast<FrameIndexSDNode>(Addr.getOperand(0)))
+        Base = CurDAG->getTargetFrameIndex(FIN->getIndex(), MVT::i16);
+      else
+        Base = Addr.getOperand(0);
+
+      Offset = CurDAG->getTargetConstant(CN->getSExtValue(), DL, MVT::i16);
+      return true;
+    }
+  }
+
+  Base = Addr;
+  Offset = CurDAG->getTargetConstant(0, DL, MVT::i16);
+  return true;
+}
+
+
+bool PCPUDAGToDAGISel::SelectInlineAsmMemoryOperand(
+    const SDValue &Op, unsigned ConstraintCode, std::vector<SDValue> &OutOps) {
+  SDValue Op0, Op1;
+  switch (ConstraintCode) {
+  default:
+    return true;
+  case InlineAsm::Constraint_m: // memory
+    if (!SelectAddr(Op, Op0, Op1))
+      return true;
+    break;
+  }
+
+  SDLoc DL(Op);
+  SDValue AluOp = CurDAG->getTargetConstant(ISD::ADD, DL, MVT::i32);;
+  OutOps.push_back(Op0);
+  OutOps.push_back(Op1);
+  OutOps.push_back(AluOp);
+  return false;
 }
 
 // createPCPUISelDag - This pass converts a legalized DAG into a
