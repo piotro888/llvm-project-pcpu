@@ -187,7 +187,9 @@ static Value *foldMulShl1(BinaryOperator &Mul, bool CommuteOperands,
 
 Instruction *InstCombinerImpl::visitMul(BinaryOperator &I) {
   Value *Op0 = I.getOperand(0), *Op1 = I.getOperand(1);
-  if (Value *V = simplifyMulInst(Op0, Op1, SQ.getWithInstruction(&I)))
+  if (Value *V =
+          simplifyMulInst(Op0, Op1, I.hasNoSignedWrap(), I.hasNoUnsignedWrap(),
+                          SQ.getWithInstruction(&I)))
     return replaceInstUsesWith(I, V);
 
   if (SimplifyAssociativeOrCommutative(I))
@@ -661,12 +663,30 @@ Instruction *InstCombinerImpl::visitFMul(BinaryOperator &I) {
       }
     }
 
+    // pow(X, Y) * X --> pow(X, Y+1)
+    // X * pow(X, Y) --> pow(X, Y+1)
+    if (match(&I, m_c_FMul(m_OneUse(m_Intrinsic<Intrinsic::pow>(m_Value(X),
+                                                                m_Value(Y))),
+                           m_Deferred(X)))) {
+      Value *Y1 =
+          Builder.CreateFAddFMF(Y, ConstantFP::get(I.getType(), 1.0), &I);
+      Value *Pow = Builder.CreateBinaryIntrinsic(Intrinsic::pow, X, Y1, &I);
+      return replaceInstUsesWith(I, Pow);
+    }
+
     if (I.isOnlyUserOfAnyOperand()) {
-      // pow(x, y) * pow(x, z) -> pow(x, y + z)
+      // pow(X, Y) * pow(X, Z) -> pow(X, Y + Z)
       if (match(Op0, m_Intrinsic<Intrinsic::pow>(m_Value(X), m_Value(Y))) &&
           match(Op1, m_Intrinsic<Intrinsic::pow>(m_Specific(X), m_Value(Z)))) {
         auto *YZ = Builder.CreateFAddFMF(Y, Z, &I);
         auto *NewPow = Builder.CreateBinaryIntrinsic(Intrinsic::pow, X, YZ, &I);
+        return replaceInstUsesWith(I, NewPow);
+      }
+      // pow(X, Y) * pow(Z, Y) -> pow(X * Z, Y)
+      if (match(Op0, m_Intrinsic<Intrinsic::pow>(m_Value(X), m_Value(Y))) &&
+          match(Op1, m_Intrinsic<Intrinsic::pow>(m_Value(Z), m_Specific(Y)))) {
+        auto *XZ = Builder.CreateFMulFMF(X, Z, &I);
+        auto *NewPow = Builder.CreateBinaryIntrinsic(Intrinsic::pow, XZ, Y, &I);
         return replaceInstUsesWith(I, NewPow);
       }
 
@@ -1101,7 +1121,7 @@ static const unsigned MaxDepth = 6;
 // actual instructions, otherwise return a non-null dummy value. Return nullptr
 // on failure.
 static Value *takeLog2(IRBuilderBase &Builder, Value *Op, unsigned Depth,
-                       bool DoFold) {
+                       bool AssumeNonZero, bool DoFold) {
   auto IfFold = [DoFold](function_ref<Value *()> Fn) {
     if (!DoFold)
       return reinterpret_cast<Value *>(-1);
@@ -1127,14 +1147,18 @@ static Value *takeLog2(IRBuilderBase &Builder, Value *Op, unsigned Depth,
   // FIXME: Require one use?
   Value *X, *Y;
   if (match(Op, m_ZExt(m_Value(X))))
-    if (Value *LogX = takeLog2(Builder, X, Depth, DoFold))
+    if (Value *LogX = takeLog2(Builder, X, Depth, AssumeNonZero, DoFold))
       return IfFold([&]() { return Builder.CreateZExt(LogX, Op->getType()); });
 
   // log2(X << Y) -> log2(X) + Y
   // FIXME: Require one use unless X is 1?
-  if (match(Op, m_Shl(m_Value(X), m_Value(Y))))
-    if (Value *LogX = takeLog2(Builder, X, Depth, DoFold))
-      return IfFold([&]() { return Builder.CreateAdd(LogX, Y); });
+  if (match(Op, m_Shl(m_Value(X), m_Value(Y)))) {
+    auto *BO = cast<OverflowingBinaryOperator>(Op);
+    // nuw will be set if the `shl` is trivially non-zero.
+    if (AssumeNonZero || BO->hasNoUnsignedWrap() || BO->hasNoSignedWrap())
+      if (Value *LogX = takeLog2(Builder, X, Depth, AssumeNonZero, DoFold))
+        return IfFold([&]() { return Builder.CreateAdd(LogX, Y); });
+  }
 
   // log2(Cond ? X : Y) -> Cond ? log2(X) : log2(Y)
   // FIXME: missed optimization: if one of the hands of select is/contains
@@ -1142,8 +1166,10 @@ static Value *takeLog2(IRBuilderBase &Builder, Value *Op, unsigned Depth,
   // FIXME: can both hands contain undef?
   // FIXME: Require one use?
   if (SelectInst *SI = dyn_cast<SelectInst>(Op))
-    if (Value *LogX = takeLog2(Builder, SI->getOperand(1), Depth, DoFold))
-      if (Value *LogY = takeLog2(Builder, SI->getOperand(2), Depth, DoFold))
+    if (Value *LogX = takeLog2(Builder, SI->getOperand(1), Depth,
+                               AssumeNonZero, DoFold))
+      if (Value *LogY = takeLog2(Builder, SI->getOperand(2), Depth,
+                                 AssumeNonZero, DoFold))
         return IfFold([&]() {
           return Builder.CreateSelect(SI->getOperand(0), LogX, LogY);
         });
@@ -1151,13 +1177,18 @@ static Value *takeLog2(IRBuilderBase &Builder, Value *Op, unsigned Depth,
   // log2(umin(X, Y)) -> umin(log2(X), log2(Y))
   // log2(umax(X, Y)) -> umax(log2(X), log2(Y))
   auto *MinMax = dyn_cast<MinMaxIntrinsic>(Op);
-  if (MinMax && MinMax->hasOneUse() && !MinMax->isSigned())
-    if (Value *LogX = takeLog2(Builder, MinMax->getLHS(), Depth, DoFold))
-      if (Value *LogY = takeLog2(Builder, MinMax->getRHS(), Depth, DoFold))
+  if (MinMax && MinMax->hasOneUse() && !MinMax->isSigned()) {
+    // Use AssumeNonZero as false here. Otherwise we can hit case where
+    // log2(umax(X, Y)) != umax(log2(X), log2(Y)) (because overflow).
+    if (Value *LogX = takeLog2(Builder, MinMax->getLHS(), Depth,
+                               /*AssumeNonZero*/ false, DoFold))
+      if (Value *LogY = takeLog2(Builder, MinMax->getRHS(), Depth,
+                                 /*AssumeNonZero*/ false, DoFold))
         return IfFold([&]() {
-          return Builder.CreateBinaryIntrinsic(
-              MinMax->getIntrinsicID(), LogX, LogY);
+          return Builder.CreateBinaryIntrinsic(MinMax->getIntrinsicID(), LogX,
+                                               LogY);
         });
+  }
 
   return nullptr;
 }
@@ -1277,8 +1308,10 @@ Instruction *InstCombinerImpl::visitUDiv(BinaryOperator &I) {
   }
 
   // Op1 udiv Op2 -> Op1 lshr log2(Op2), if log2() folds away.
-  if (takeLog2(Builder, Op1, /*Depth*/0, /*DoFold*/false)) {
-    Value *Res = takeLog2(Builder, Op1, /*Depth*/0, /*DoFold*/true);
+  if (takeLog2(Builder, Op1, /*Depth*/ 0, /*AssumeNonZero*/ true,
+               /*DoFold*/ false)) {
+    Value *Res = takeLog2(Builder, Op1, /*Depth*/ 0,
+                          /*AssumeNonZero*/ true, /*DoFold*/ true);
     return replaceInstUsesWith(
         I, Builder.CreateLShr(Op0, Res, I.getName(), I.isExact()));
   }
@@ -1647,6 +1680,16 @@ Instruction *InstCombinerImpl::visitFDiv(BinaryOperator &I) {
 
   if (Instruction *Mul = foldFDivPowDivisor(I, Builder))
     return Mul;
+
+  // pow(X, Y) / X --> pow(X, Y-1)
+  if (I.hasAllowReassoc() &&
+      match(Op0, m_OneUse(m_Intrinsic<Intrinsic::pow>(m_Specific(Op1),
+                                                      m_Value(Y))))) {
+    Value *Y1 =
+        Builder.CreateFAddFMF(Y, ConstantFP::get(I.getType(), -1.0), &I);
+    Value *Pow = Builder.CreateBinaryIntrinsic(Intrinsic::pow, Op1, Y1, &I);
+    return replaceInstUsesWith(I, Pow);
+  }
 
   return nullptr;
 }

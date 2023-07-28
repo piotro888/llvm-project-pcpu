@@ -516,7 +516,7 @@ if config.host_os == 'Linux':
   if not config.android and len(ver_lines) and ver_lines[0].startswith(b"ldd "):
     from distutils.version import LooseVersion
     ver = LooseVersion(ver_lines[0].split()[-1].decode())
-    for required in ["2.27", "2.30", "2.34"]:
+    for required in ["2.27", "2.30", "2.34", "2.37"]:
       if ver >= LooseVersion(required):
         config.available_features.add("glibc-" + required)
 
@@ -733,3 +733,10 @@ if config.host_os == 'Darwin':
       sh_quote(get_ios_commands_dir())
     ))
   )
+
+# It is not realistically possible to account for all options that could
+# possibly be present in system and user configuration files, so disable
+# default configs for the test runs. In particular, anything hardening
+# related is likely to cause issues with sanitizer tests, because it may
+# preempt something we're looking to trap (e.g. _FORTIFY_SOURCE vs our ASAN).
+config.environment["CLANG_NO_DEFAULT_CONFIG"] = "1"

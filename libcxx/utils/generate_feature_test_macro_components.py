@@ -231,7 +231,6 @@ feature_test_macros = [ add_version_header(x) for x in [
     "name": "__cpp_lib_constexpr_complex",
     "values": { "c++20": 201711 },
     "headers": ["complex"],
-    "unimplemented": True,
   }, {
     "name": "__cpp_lib_constexpr_dynamic_alloc",
     "values": { "c++20": 201907 },
@@ -535,8 +534,12 @@ feature_test_macros = [ add_version_header(x) for x in [
     "headers": ["iomanip"],
   }, {
     "name": "__cpp_lib_ranges",
-    "values": { "c++20": 201811 },
+    "values": { "c++20": 202106 },
     "headers": ["algorithm", "functional", "iterator", "memory", "ranges"],
+  }, {
+    "name": "__cpp_lib_ranges_as_rvalue",
+    "values": { "c++2b": 202207 },
+    "headers": ["ranges"],
   }, {
     "name": "__cpp_lib_ranges_chunk",
     "values": { "c++2b": 202202 },
@@ -645,7 +648,8 @@ feature_test_macros = [ add_version_header(x) for x in [
     "name": "__cpp_lib_source_location",
     "values": { "c++20": 201907 },
     "headers": ["source_location"],
-    "unimplemented": True,
+    "test_suite_guard": "__has_builtin(__builtin_source_location) && !(defined(TEST_APPLE_CLANG_VER) && TEST_APPLE_CLANG_VER <= 1403)",
+    "libcxx_guard": "__has_builtin(__builtin_source_location) && !(defined(_LIBCPP_APPLE_CLANG_VER) && _LIBCPP_APPLE_CLANG_VER <= 1403)",
   }, {
     "name": "__cpp_lib_span",
     "values": { "c++20": 202002 },

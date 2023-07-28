@@ -3,7 +3,7 @@
 #include "ClangTidyDiagnosticConsumer.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/Support/ScopedPrinter.h"
-#include "llvm/Testing/Support/Annotations.h"
+#include "llvm/Testing/Annotations/Annotations.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include <optional>
@@ -20,7 +20,7 @@ template <> struct OptionEnumMapping<Colours> {
         {Colours::Yellow, "Yellow"}, {Colours::Green, "Green"},
         {Colours::Blue, "Blue"},     {Colours::Indigo, "Indigo"},
         {Colours::Violet, "Violet"}};
-    return makeArrayRef(Mapping);
+    return ArrayRef(Mapping);
   }
 };
 

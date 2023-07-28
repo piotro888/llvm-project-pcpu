@@ -58,6 +58,7 @@ if (COMPILER_RT_STANDALONE_BUILD)
 endif()
 
 include(builtin-config-ix)
+include(CMakePushCheckState)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "AIX")
   include(CompilerRTAIXUtils)
@@ -190,14 +191,11 @@ set(GENERIC_SOURCES
   umodti3.c
 )
 
-# Build BF16 files only when "__bf16" is available.
-if(COMPILER_RT_HAS_BFLOAT16 AND NOT APPLE)
-  set(GENERIC_SOURCES
-    ${GENERIC_SOURCES}
+# We only build BF16 files when "__bf16" is available.
+set(BF16_SOURCES
     truncdfbf2.c
     truncsfbf2.c
-  )
-endif()
+)
 
 # TODO: Several "tf" files (and divtc3.c, but not multc3.c) are in
 # GENERIC_SOURCES instead of here.
@@ -593,6 +591,8 @@ if (MINGW)
 endif()
 
 set(armv4t_SOURCES ${arm_min_SOURCES})
+set(armv5te_SOURCES ${arm_min_SOURCES})
+set(armv6_SOURCES ${arm_min_SOURCES})
 set(armhf_SOURCES ${arm_SOURCES})
 set(armv7_SOURCES ${arm_SOURCES})
 set(armv7s_SOURCES ${arm_SOURCES})
@@ -745,8 +745,6 @@ else ()
     append_list_if(COMPILER_RT_ENABLE_CET -fcf-protection=full BUILTIN_CFLAGS)
   endif()
 
-  append_list_if(COMPILER_RT_HAS_FLOAT16 -DCOMPILER_RT_HAS_FLOAT16 BUILTIN_CFLAGS)
-
   append_list_if(COMPILER_RT_HAS_STD_C11_FLAG -std=c11 BUILTIN_CFLAGS)
 
   # These flags would normally be added to CMAKE_C_FLAGS by the llvm
@@ -770,11 +768,19 @@ else ()
     append_list_if(COMPILER_RT_HAS_VISIBILITY_HIDDEN_FLAG VISIBILITY_HIDDEN BUILTIN_DEFS)
   endif()
 
+  if(COMPILER_RT_DISABLE_AARCH64_FMV)
+    list(APPEND BUILTIN_DEFS DISABLE_AARCH64_FMV)
+  endif()
+
   append_list_if(COMPILER_RT_HAS_ASM_LSE HAS_ASM_LSE BUILTIN_DEFS)
 
   foreach (arch ${BUILTIN_SUPPORTED_ARCH})
     if (CAN_TARGET_${arch})
+      cmake_push_check_state()
+      # TODO: we should probably make most of the checks in builtin-config depend on the target flags.
+      message(STATUS "Performing additional configure checks with target flags: ${TARGET_${arch}_CFLAGS}")
       set(BUILTIN_CFLAGS_${arch} ${BUILTIN_CFLAGS})
+      list(APPEND CMAKE_REQUIRED_FLAGS ${TARGET_${arch}_CFLAGS} ${BUILTIN_CFLAGS_${arch}})
       # For ARM archs, exclude any VFP builtins if VFP is not supported
       if (${arch} MATCHES "^(arm|armhf|armv7|armv7s|armv7k|armv7m|armv7em|armv8m.main|armv8.1m.main)$")
         string(REPLACE ";" " " _TARGET_${arch}_CFLAGS "${TARGET_${arch}_CFLAGS}")
@@ -792,6 +798,15 @@ else ()
             list(REMOVE_ITEM ${arch}_SOURCES ${arm_Thumb1_VFPv2_DP_SOURCES})
           endif()
         endif()
+      endif()
+      check_c_source_compiles("_Float16 foo(_Float16 x) { return x; }"
+                              COMPILER_RT_HAS_${arch}_FLOAT16)
+      append_list_if(COMPILER_RT_HAS_${arch}_FLOAT16 -DCOMPILER_RT_HAS_FLOAT16 BUILTIN_CFLAGS_${arch})
+      check_c_source_compiles("__bf16 foo(__bf16 x) { return x; }"
+                              COMPILER_RT_HAS_${arch}_BFLOAT16)
+      # Build BF16 files only when "__bf16" is available.
+      if(COMPILER_RT_HAS_${arch}_BFLOAT16)
+        list(APPEND ${arch}_SOURCES ${BF16_SOURCES})
       endif()
 
       # Remove a generic C builtin when an arch-specific builtin is specified.
@@ -827,6 +842,7 @@ else ()
                               DEFS ${BUILTIN_DEFS}
                               CFLAGS ${BUILTIN_CFLAGS_${arch}}
                               PARENT_TARGET builtins)
+      cmake_pop_check_state()
     endif ()
   endforeach ()
 endif ()

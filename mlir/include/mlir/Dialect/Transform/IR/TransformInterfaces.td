@@ -101,6 +101,10 @@ def TransformOpInterface : OpInterface<"TransformOpInterface"> {
       return diag;
     }
   }];
+
+  let verify = [{
+    return ::mlir::transform::detail::verifyTransformOpInterface($_op);
+  }];
 }
 
 class TransformTypeInterfaceBase<string cppClass, string cppObjectType>
@@ -149,8 +153,12 @@ def TransformParamTypeInterface
     underlying type. A user of the value can assume that the parameter has been
     verified.
   }];
-
 }
+
+def Transform_AnyHandleOrParamType
+  : Type<Or<[TransformParamTypeInterface.predicate,
+             TransformHandleTypeInterface.predicate]>,
+         "any transform handle or parameter">;
 
 def FunctionalStyleTransformOpTrait
     : NativeOpTrait<"FunctionalStyleTransformOpTrait"> {

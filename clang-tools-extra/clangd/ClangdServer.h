@@ -142,7 +142,7 @@ public:
     /// defaults and -resource-dir compiler flag).
     /// If None, ClangdServer calls CompilerInvocation::GetResourcePath() to
     /// obtain the standard resource directory.
-    std::optional<std::string> ResourceDir = std::nullopt;
+    std::optional<std::string> ResourceDir;
 
     /// Time to wait after a new file version before computing diagnostics.
     DebouncePolicy UpdateDebounce = DebouncePolicy{
@@ -170,6 +170,10 @@ public:
 
     // If true, parse emplace-like functions in the preamble.
     bool PreambleParseForwardingFunctions = false;
+
+    /// Whether include fixer insertions for Objective-C code should use #import
+    /// instead of #include.
+    bool ImportInsertions = false;
 
     explicit operator TUScheduler::Options() const;
   };
@@ -433,6 +437,8 @@ private:
   bool LineFoldingOnly = false;
 
   bool PreambleParseForwardingFunctions = false;
+
+  bool ImportInsertions = false;
 
   // GUARDED_BY(CachedCompletionFuzzyFindRequestMutex)
   llvm::StringMap<std::optional<FuzzyFindRequest>>

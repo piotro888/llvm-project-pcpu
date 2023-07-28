@@ -253,7 +253,6 @@ set(LLVM_INSTALL_TOOLCHAIN_ONLY ON CACHE BOOL "")
 set(LLVM_TOOLCHAIN_TOOLS
   dsymutil
   llvm-ar
-  llvm-bolt
   llvm-cov
   llvm-cxxfilt
   llvm-debuginfod-find
@@ -265,6 +264,7 @@ set(LLVM_TOOLCHAIN_TOOLS
   llvm-lib
   llvm-libtool-darwin
   llvm-lipo
+  llvm-ml
   llvm-mt
   llvm-nm
   llvm-objcopy
@@ -286,6 +286,7 @@ set(LLVM_TOOLCHAIN_TOOLS
   CACHE STRING "")
 
 set(LLVM_DISTRIBUTION_COMPONENTS
+  bolt
   clang
   lld
   LTO

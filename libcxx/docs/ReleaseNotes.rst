@@ -35,6 +35,30 @@ see the `releases page <https://llvm.org/releases/>`_.
 What's New in Libc++ 16.0.0?
 ============================
 
+The main focus of the libc++ team has been to implement new C++20 and C++23
+features.
+
+The C++20 format library has improved but it not yet considered stable. The
+main improvements are additional formatters for the chrono calendar types. Work
+on formatting ranges has started.
+
+The C++20 ranges library has been completed and is no longer experimental (with
+the exception of `ranges::join_view` which is still marked as experimental
+because it is about to undergo an ABI-breaking change in the Standard due to
+`D2770 <https://isocpp.org/files/papers/D2770R0.html>`_). Work on C++23 ranges
+has started.
+
+The C++20 spaceship operator has been added to more types, the work is still
+ongoing.
+
+`D139235 <https://reviews.llvm.org/D139235>`_ made ``copy`` and ``move``
+algorithms and their variations (``copy_backward``, etc.) apply optimizations
+for trivial types more often. This has the potential to expose bugs in code
+using these algorithms that currently relies on undefined behavior (this
+includes indirect usage -- for example, these algorithms are used in the
+implementation of some standard containers). This change also made the
+algorithms check the given iterator types for conformance more strictly.
+
 Implemented Papers
 ------------------
 - P2499R0 - ``string_view`` range constructor should be ``explicit``
@@ -50,6 +74,15 @@ Implemented Papers
 - P0600R1 - ``nodiscard`` in the library
 - P0339R6 - ``polymorphic_allocator<>`` as a vocabulary type
 - P1169R4 - ``static operator()``
+- P0415R1 - ``constexpr`` for ``std::complex``
+- P1208R6 - ``std::source_location``
+- P0323R12 - ``std::expected``
+- P1035R7 - Input Range Adaptors
+- P2325R3 - Views should not be required to be default constructible
+- P2446R2 - ``views::as_rvalue``
+- P1020R1 - Smart pointer creation with default initialization
+- P2210R2 - Superior String Splitting
+- P2286R8 - Formatting Ranges
 
 Improvements and New Features
 -----------------------------
@@ -57,6 +90,11 @@ Improvements and New Features
   now provided when implementations in the global namespace are provided by
   the C library.
 - Implemented ``<memory_resource>`` header from C++17
+- The ``ranges`` versions of ``copy``, ``move``, ``copy_backward`` and ``move_backward`` are now also optimized for
+  ``std::deque<>::iterator``, which can lead to up to 20x performance improvements on certain algorithms.
+- The ``std`` and ``ranges`` versions of ``copy``, ``move``, ``copy_backward`` and ``move_backward`` are now also
+  optimized for ``join_view::iterator``, which can lead to up to 20x performance improvements on certain combinations of
+  iterators and algorithms.
 
 Deprecations and Removals
 -------------------------
@@ -67,8 +105,7 @@ Deprecations and Removals
   includes are removed based on the language version used. Incidental transitive
   inclusions of the following headers have been removed:
 
-  - C++11, C++14, and C++17: ``chrono``
-  - C++20: ``chrono``
+  - C++11, C++14, C++17, and C++20: ``chrono``
   - C++2b: ``algorithm``, ``array``, ``atomic``, ``bit``, ``chrono``,
     ``climits``, ``cmath``, ``compare``, ``concepts``, ``cstdarg``, ``cstddef``,
     ``cstdint``, ``cstdlib``, ``cstring``, ``ctime``, ``exception``,
@@ -83,7 +120,7 @@ Deprecations and Removals
   incidental transitive includes more aggressively, in particular regardless
   of the language version in use.
 
-- The legacy testing system for libc++, libc++abi and libunwind has been removed.
+- The legacy testing system for libc++, libc++abi, and libunwind has been removed.
   All known clients have been migrated to the new configuration system, but please
   reach out to the libc++ developers if you find something missing in the new
   configuration system.
@@ -112,6 +149,10 @@ Upcoming Deprecations and Removals
   working when we remove the base template. The Standard does not mandate that a base template is provided,
   and such a base template is bound to be incorrect for some types, which could currently cause unexpected
   behavior while going undetected.
+
+- The ``_LIBCPP_AVAILABILITY_CUSTOM_VERBOSE_ABORT_PROVIDED`` macro will not be honored anymore in LLVM 18.
+  Please see the updated documentation about the safe libc++ mode and in particular the ``_LIBCPP_VERBOSE_ABORT``
+  macro for details.
 
 API Changes
 -----------

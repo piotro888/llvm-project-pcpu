@@ -1,4 +1,3 @@
-// REQUIRES: amdgpu-registered-target
 // Begin X86/GCC/Linux tests ----------------
 
 // RUN: %clang -march=i386 -m32 -E -dM %s -o - 2>&1 \
@@ -1650,9 +1649,9 @@
 // RUN:     -target i386-unknown-linux \
 // RUN:   | FileCheck -match-full-lines %s -check-prefix=CHECK_SPR_M32
 // CHECK_SPR_M32: #define __AES__ 1
-// CHECK_SPR_M32: #define __AMXBF16__ 1
-// CHECK_SPR_M32: #define __AMXINT8__ 1
-// CHECK_SPR_M32: #define __AMXTILE__ 1
+// CHECK_SPR_M32: #define __AMX_BF16__ 1
+// CHECK_SPR_M32: #define __AMX_INT8__ 1
+// CHECK_SPR_M32: #define __AMX_TILE__ 1
 // CHECK_SPR_M32: #define __AVX2__ 1
 // CHECK_SPR_M32: #define __AVX512BF16__ 1
 // CHECK_SPR_M32: #define __AVX512BITALG__ 1
@@ -1725,9 +1724,9 @@
 // RUN:     -target i386-unknown-linux \
 // RUN:   | FileCheck -match-full-lines %s -check-prefix=CHECK_SPR_M64
 // CHECK_SPR_M64: #define __AES__ 1
-// CHECK_SPR_M64: #define __AMXBF16__ 1
-// CHECK_SPR_M64: #define __AMXINT8__ 1
-// CHECK_SPR_M64: #define __AMXTILE__ 1
+// CHECK_SPR_M64: #define __AMX_BF16__ 1
+// CHECK_SPR_M64: #define __AMX_INT8__ 1
+// CHECK_SPR_M64: #define __AMX_TILE__ 1
 // CHECK_SPR_M64: #define __AVX2__ 1
 // CHECK_SPR_M64: #define __AVX512BF16__ 1
 // CHECK_SPR_M64: #define __AVX512BITALG__ 1
@@ -1798,10 +1797,10 @@
 // RUN:     --target=i386 \
 // RUN:   | FileCheck -match-full-lines %s -check-prefix=CHECK_GNR_M32
 // CHECK_GNR_M32: #define __AES__ 1
-// CHECK_GNR_M32: #define __AMXBF16__ 1
-// CHECK_GNR_M32: #define __AMXFP16__ 1
-// CHECK_GNR_M32: #define __AMXINT8__ 1
-// CHECK_GNR_M32: #define __AMXTILE__ 1
+// CHECK_GNR_M32: #define __AMX_BF16__ 1
+// CHECK_GNR_M32: #define __AMX_FP16__ 1
+// CHECK_GNR_M32: #define __AMX_INT8__ 1
+// CHECK_GNR_M32: #define __AMX_TILE__ 1
 // CHECK_GNR_M32: #define __AVX2__ 1
 // CHECK_GNR_M32: #define __AVX512BF16__ 1
 // CHECK_GNR_M32: #define __AVX512BITALG__ 1
@@ -1872,10 +1871,10 @@
 // RUN:     --target=x86_64 \
 // RUN:   | FileCheck -match-full-lines %s -check-prefix=CHECK_GNR_M64
 // CHECK_GNR_M64: #define __AES__ 1
-// CHECK_GNR_M64: #define __AMXBF16__ 1
-// CHECK_GNR_M64: #define __AMXFP16__ 1
-// CHECK_GNR_M64: #define __AMXINT8__ 1
-// CHECK_GNR_M64: #define __AMXTILE__ 1
+// CHECK_GNR_M64: #define __AMX_BF16__ 1
+// CHECK_GNR_M64: #define __AMX_FP16__ 1
+// CHECK_GNR_M64: #define __AMX_INT8__ 1
+// CHECK_GNR_M64: #define __AMX_TILE__ 1
 // CHECK_GNR_M64: #define __AVX2__ 1
 // CHECK_GNR_M64: #define __AVX512BF16__ 1
 // CHECK_GNR_M64: #define __AVX512BITALG__ 1
@@ -4319,6 +4318,22 @@
 // RUN:   | FileCheck -match-full-lines %s -check-prefix=CHECK_R600_FP64
 // CHECK_R600_FP64-DAG: #define __R600__ 1
 // CHECK_R600_FP64-DAG: #define __HAS_FMAF__ 1
+
+// Begin avr tests ----------------
+
+// RUN: %clang --target=avr -mmcu=atmega328 -E -dM %s -o - 2>&1 \
+// RUN:   | FileCheck -match-full-lines %s -check-prefix=CHECK-AVR0
+// CHECK-AVR0: #define __AVR_ARCH__ 5
+// CHECK-AVR0: #define __AVR_ATmega328__ 1
+// CHECK-AVR0: #define __flash __attribute__((__address_space__(1)))
+// RUN: %clang --target=avr -mmcu=atmega2560 -E -dM %s -o - 2>&1 \
+// RUN:   | FileCheck -match-full-lines %s -check-prefix=CHECK-AVR1
+// CHECK-AVR1: #define __AVR_ARCH__ 6
+// CHECK-AVR1: #define __AVR_ATmega2560__ 1
+// CHECK-AVR1: #define __flash  __attribute__((__address_space__(1)))
+// CHECK-AVR1: #define __flash1 __attribute__((__address_space__(2)))
+// CHECK-AVR1: #define __flash2 __attribute__((__address_space__(3)))
+// CHECK-AVR1: #define __flash3 __attribute__((__address_space__(4)))
 
 // Begin M68k tests ----------------
 

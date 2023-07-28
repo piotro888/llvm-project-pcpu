@@ -19,6 +19,7 @@
 #include <__algorithm/find_if.h>
 #include <__algorithm/min.h>
 #include <__assert>
+#include <__concepts/arithmetic.h>
 #include <__concepts/same_as.h>
 #include <__config>
 #include <__debug>
@@ -138,6 +139,7 @@ inline constexpr __fields __fields_pointer{.__type_ = true};
 
 #  if _LIBCPP_STD_VER > 20
 inline constexpr __fields __fields_tuple{.__type_ = false, .__allow_colon_in_fill_ = true};
+inline constexpr __fields __fields_range{.__type_ = false, .__allow_colon_in_fill_ = true};
 #  endif
 
 enum class _LIBCPP_ENUM_VIS __alignment : uint8_t {

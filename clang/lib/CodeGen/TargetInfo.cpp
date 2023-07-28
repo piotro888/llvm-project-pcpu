@@ -1078,7 +1078,7 @@ static llvm::Type* X86AdjustInlineAsmType(CodeGen::CodeGenFunction &CGF,
                      .Cases("y", "&y", "^Ym", true)
                      .Default(false);
   if (IsMMXCons && Ty->isVectorTy()) {
-    if (cast<llvm::VectorType>(Ty)->getPrimitiveSizeInBits().getFixedSize() !=
+    if (cast<llvm::VectorType>(Ty)->getPrimitiveSizeInBits().getFixedValue() !=
         64) {
       // Invalid MMX constraint
       return nullptr;
@@ -2381,9 +2381,7 @@ class X86_64ABIInfo : public ABIInfo {
       return false;
 
     const llvm::Triple &Triple = getTarget().getTriple();
-    if (Triple.isOSDarwin() || Triple.isPS())
-      return false;
-    if (Triple.isOSFreeBSD() && Triple.getOSMajorVersion() >= 10)
+    if (Triple.isOSDarwin() || Triple.isPS() || Triple.isOSFreeBSD())
       return false;
     return true;
   }
@@ -2417,7 +2415,7 @@ public:
     if (info.isDirect()) {
       llvm::Type *ty = info.getCoerceToType();
       if (llvm::VectorType *vectorTy = dyn_cast_or_null<llvm::VectorType>(ty))
-        return vectorTy->getPrimitiveSizeInBits().getFixedSize() > 128;
+        return vectorTy->getPrimitiveSizeInBits().getFixedValue() > 128;
     }
     return false;
   }
@@ -3592,7 +3590,7 @@ GetX86_64ByValArgumentPair(llvm::Type *Lo, llvm::Type *Hi,
   // (e.g. i32 and i32) then the resultant struct type ({i32,i32}) won't have
   // the second element at offset 8.  Check for this:
   unsigned LoSize = (unsigned)TD.getTypeAllocSize(Lo);
-  unsigned HiAlign = TD.getABITypeAlignment(Hi);
+  llvm::Align HiAlign = TD.getABITypeAlign(Hi);
   unsigned HiStart = llvm::alignTo(LoSize, HiAlign);
   assert(HiStart != 0 && HiStart <= 8 && "Invalid x86-64 argument pair!");
 
@@ -4169,13 +4167,13 @@ Address X86_64ABIInfo::EmitVAArg(CodeGenFunction &CGF, Address VAListAddr,
     // FIXME: Our choice of alignment here and below is probably pessimistic.
     llvm::Value *V = CGF.Builder.CreateAlignedLoad(
         TyLo, CGF.Builder.CreateBitCast(RegLoAddr, PTyLo),
-        CharUnits::fromQuantity(getDataLayout().getABITypeAlignment(TyLo)));
+        CharUnits::fromQuantity(getDataLayout().getABITypeAlign(TyLo)));
     CGF.Builder.CreateStore(V, CGF.Builder.CreateStructGEP(Tmp, 0));
 
     // Copy the second element.
     V = CGF.Builder.CreateAlignedLoad(
         TyHi, CGF.Builder.CreateBitCast(RegHiAddr, PTyHi),
-        CharUnits::fromQuantity(getDataLayout().getABITypeAlignment(TyHi)));
+        CharUnits::fromQuantity(getDataLayout().getABITypeAlign(TyHi)));
     CGF.Builder.CreateStore(V, CGF.Builder.CreateStructGEP(Tmp, 1));
 
     RegAddr = CGF.Builder.CreateElementBitCast(Tmp, LTy);
@@ -7418,18 +7416,28 @@ public:
 };
 
 class SystemZTargetCodeGenInfo : public TargetCodeGenInfo {
+  ASTContext &Ctx;
+
+  const SystemZABIInfo &getABIInfo() const {
+    return static_cast<const SystemZABIInfo&>(TargetCodeGenInfo::getABIInfo());
+  }
+
   // These are used for speeding up the search for a visible vector ABI.
   mutable bool HasVisibleVecABIFlag = false;
   mutable std::set<const Type *> SeenTypes;
 
-  // Returns true (the first time) if Ty is or found to make use of a vector
-  // type (e.g. as a function argument).
-  bool isVectorTypeBased(const Type *Ty) const;
+  // Returns true (the first time) if Ty is, or is found to include, a vector
+  // type that exposes the vector ABI. This is any vector >=16 bytes which
+  // with vector support are aligned to only 8 bytes. When IsParam is true,
+  // the type belongs to a value as passed between functions. If it is a
+  // vector <=16 bytes it will be passed in a vector register (if supported).
+  bool isVectorTypeBased(const Type *Ty, bool IsParam) const;
 
 public:
   SystemZTargetCodeGenInfo(CodeGenTypes &CGT, bool HasVector, bool SoftFloatABI)
       : TargetCodeGenInfo(
-            std::make_unique<SystemZABIInfo>(CGT, HasVector, SoftFloatABI)) {
+            std::make_unique<SystemZABIInfo>(CGT, HasVector, SoftFloatABI)),
+            Ctx(CGT.getContext()) {
     SwiftInfo =
         std::make_unique<SwiftABIInfo>(CGT, /*SwiftErrorInRegister=*/false);
   }
@@ -7439,9 +7447,9 @@ public:
   // indicating a visible vector ABI is added. Eventually this will result in
   // a GNU attribute indicating the vector ABI of the module.  Ty is the type
   // of a variable or function parameter that is globally visible.
-  void handleExternallyVisibleObjABI(const Type *Ty,
-                                     CodeGen::CodeGenModule &M) const {
-    if (!HasVisibleVecABIFlag && isVectorTypeBased(Ty)) {
+  void handleExternallyVisibleObjABI(const Type *Ty, CodeGen::CodeGenModule &M,
+                                     bool IsParam) const {
+    if (!HasVisibleVecABIFlag && isVectorTypeBased(Ty, IsParam)) {
       M.getModule().addModuleFlag(llvm::Module::Warning,
                                   "s390x-visible-vector-ABI", 1);
       HasVisibleVecABIFlag = true;
@@ -7457,11 +7465,13 @@ public:
     // variable or function.
     if (const auto *VD = dyn_cast<VarDecl>(D)) {
       if (VD->isExternallyVisible())
-        handleExternallyVisibleObjABI(VD->getType().getTypePtr(), M);
+        handleExternallyVisibleObjABI(VD->getType().getTypePtr(), M,
+                                      /*IsParam*/false);
     }
     else if (const FunctionDecl *FD = dyn_cast<FunctionDecl>(D)) {
       if (FD->isExternallyVisible())
-        handleExternallyVisibleObjABI(FD->getType().getTypePtr(), M);
+        handleExternallyVisibleObjABI(FD->getType().getTypePtr(), M,
+                                      /*IsParam*/false);
     }
   }
 
@@ -7571,17 +7581,18 @@ QualType SystemZABIInfo::GetSingleElementType(QualType Ty) const {
 
     // If this is a C++ record, check the bases first.
     if (const CXXRecordDecl *CXXRD = dyn_cast<CXXRecordDecl>(RD))
-      for (const auto &I : CXXRD->bases()) {
-        QualType Base = I.getType();
+      if (CXXRD->hasDefinition())
+        for (const auto &I : CXXRD->bases()) {
+          QualType Base = I.getType();
 
-        // Empty bases don't affect things either way.
-        if (isEmptyRecord(getContext(), Base, true))
-          continue;
+          // Empty bases don't affect things either way.
+          if (isEmptyRecord(getContext(), Base, true))
+            continue;
 
-        if (!Found.isNull())
-          return Ty;
-        Found = GetSingleElementType(Base);
-      }
+          if (!Found.isNull())
+            return Ty;
+          Found = GetSingleElementType(Base);
+        }
 
     // Check the fields.
     for (const auto *FD : RD->fields()) {
@@ -7635,7 +7646,8 @@ Address SystemZABIInfo::EmitVAArg(CodeGenFunction &CGF, Address VAListAddr,
   bool IsVector = false;
   CharUnits UnpaddedSize;
   CharUnits DirectAlign;
-  SZCGI.handleExternallyVisibleObjABI(Ty.getTypePtr(), CGT.getCGM());
+  SZCGI.handleExternallyVisibleObjABI(Ty.getTypePtr(), CGT.getCGM(),
+                                      /*IsParam*/true);
   if (IsIndirect) {
     DirectTy = llvm::PointerType::getUnqual(DirectTy);
     UnpaddedSize = DirectAlign = CharUnits::fromQuantity(8);
@@ -7843,35 +7855,57 @@ void SystemZABIInfo::computeInfo(CGFunctionInfo &FI) const {
       // Check if a vararg vector argument is passed, in which case the
       // vector ABI becomes visible as the va_list could be passed on to
       // other functions.
-      SZCGI.handleExternallyVisibleObjABI(I.type.getTypePtr(), CGT.getCGM());
+      SZCGI.handleExternallyVisibleObjABI(I.type.getTypePtr(), CGT.getCGM(),
+                                          /*IsParam*/true);
   }
 }
 
-bool SystemZTargetCodeGenInfo::isVectorTypeBased(const Type *Ty) const {
-  while (Ty->isPointerType() || Ty->isArrayType())
-    Ty = Ty->getPointeeOrArrayElementType();
+bool SystemZTargetCodeGenInfo::isVectorTypeBased(const Type *Ty,
+                                                 bool IsParam) const {
   if (!SeenTypes.insert(Ty).second)
     return false;
-  if (Ty->isVectorType())
-    return true;
+
+  if (IsParam) {
+    // A narrow (<16 bytes) vector will as a parameter also expose the ABI as
+    // it will be passed in a vector register. A wide (>16 bytes) vector will
+    // be passed via "hidden" pointer where any extra alignment is not
+    // required (per GCC).
+    const Type *SingleEltTy =
+      getABIInfo().GetSingleElementType(QualType(Ty, 0)).getTypePtr();
+    bool SingleVecEltStruct = SingleEltTy != Ty && SingleEltTy->isVectorType() &&
+      Ctx.getTypeSize(SingleEltTy) == Ctx.getTypeSize(Ty);
+    if (Ty->isVectorType() || SingleVecEltStruct)
+      return Ctx.getTypeSize(Ty) / 8 <= 16;
+  }
+
+  // Assume pointers are dereferenced.
+  while (Ty->isPointerType() || Ty->isArrayType())
+    Ty = Ty->getPointeeOrArrayElementType();
+
+  // Vectors >= 16 bytes expose the ABI through alignment requirements.
+  if (Ty->isVectorType() && Ctx.getTypeSize(Ty) / 8 >= 16)
+      return true;
+
   if (const auto *RecordTy = Ty->getAs<RecordType>()) {
     const RecordDecl *RD = RecordTy->getDecl();
     if (const CXXRecordDecl *CXXRD = dyn_cast<CXXRecordDecl>(RD))
       if (CXXRD->hasDefinition())
         for (const auto &I : CXXRD->bases())
-          if (isVectorTypeBased(I.getType().getTypePtr()))
+          if (isVectorTypeBased(I.getType().getTypePtr(), /*IsParam*/false))
             return true;
     for (const auto *FD : RD->fields())
-      if (isVectorTypeBased(FD->getType().getTypePtr()))
+      if (isVectorTypeBased(FD->getType().getTypePtr(), /*IsParam*/false))
         return true;
   }
+
   if (const auto *FT = Ty->getAs<FunctionType>())
-    if (isVectorTypeBased(FT->getReturnType().getTypePtr()))
+    if (isVectorTypeBased(FT->getReturnType().getTypePtr(), /*IsParam*/true))
       return true;
   if (const FunctionProtoType *Proto = Ty->getAs<FunctionProtoType>())
     for (auto ParamType : Proto->getParamTypes())
-      if (isVectorTypeBased(ParamType.getTypePtr()))
+      if (isVectorTypeBased(ParamType.getTypePtr(), /*IsParam*/true))
         return true;
+
   return false;
 }
 
@@ -9980,7 +10014,7 @@ private:
 
     // Check if Ty is a usable substitute for the coercion type.
     bool isUsableType(llvm::StructType *Ty) const {
-      return llvm::makeArrayRef(Elems) == Ty->elements();
+      return llvm::ArrayRef(Elems) == Ty->elements();
     }
 
     // Get the coercion type as a literal struct type.
@@ -11140,11 +11174,6 @@ void RISCVABIInfo::computeInfo(CGFunctionInfo &FI) const {
     }
   }
 
-  // We must track the number of GPRs used in order to conform to the RISC-V
-  // ABI, as integer scalars passed in registers should have signext/zeroext
-  // when promoted, but are anyext if passed on the stack. As GPR usage is
-  // different for variadic arguments, we must also track whether we are
-  // examining a vararg or not.
   int ArgGPRsLeft = IsRetIndirect ? NumArgGPRs - 1 : NumArgGPRs;
   int ArgFPRsLeft = FLen ? NumArgFPRs : 0;
   int NumFixedArgs = FI.getNumRequiredArgs();
@@ -11336,7 +11365,7 @@ ABIArgInfo RISCVABIInfo::coerceAndExpandFPCCEligibleStruct(
   }
 
   CharUnits Field2Align =
-      CharUnits::fromQuantity(getDataLayout().getABITypeAlignment(Field2Ty));
+      CharUnits::fromQuantity(getDataLayout().getABITypeAlign(Field2Ty));
   CharUnits Field1End = Field1Off +
       CharUnits::fromQuantity(getDataLayout().getTypeStoreSize(Field1Ty));
   CharUnits Field2OffNoPadNoPack = Field1End.alignTo(Field2Align);
@@ -11422,7 +11451,6 @@ ABIArgInfo RISCVABIInfo::classifyArgumentType(QualType Ty, bool IsFixed,
   }
 
   uint64_t NeededAlign = getContext().getTypeAlign(Ty);
-  bool MustUseStack = false;
   // Determine the number of GPRs needed to pass the current argument
   // according to the ABI. 2*XLen-aligned varargs are passed in "aligned"
   // register pairs, so may consume 3 registers.
@@ -11433,7 +11461,6 @@ ABIArgInfo RISCVABIInfo::classifyArgumentType(QualType Ty, bool IsFixed,
     NeededArgGPRs = 2;
 
   if (NeededArgGPRs > ArgGPRsLeft) {
-    MustUseStack = true;
     NeededArgGPRs = ArgGPRsLeft;
   }
 
@@ -11444,14 +11471,13 @@ ABIArgInfo RISCVABIInfo::classifyArgumentType(QualType Ty, bool IsFixed,
     if (const EnumType *EnumTy = Ty->getAs<EnumType>())
       Ty = EnumTy->getDecl()->getIntegerType();
 
-    // All integral types are promoted to XLen width, unless passed on the
-    // stack.
-    if (Size < XLen && Ty->isIntegralOrEnumerationType() && !MustUseStack) {
+    // All integral types are promoted to XLen width
+    if (Size < XLen && Ty->isIntegralOrEnumerationType()) {
       return extendType(Ty);
     }
 
     if (const auto *EIT = Ty->getAs<BitIntType>()) {
-      if (EIT->getNumBits() < XLen && !MustUseStack)
+      if (EIT->getNumBits() < XLen)
         return extendType(Ty);
       if (EIT->getNumBits() > 128 ||
           (!getContext().getTargetInfo().hasInt128Type() &&
@@ -12099,7 +12125,7 @@ ABIArgInfo LoongArchABIInfo::coerceAndExpandFARsEligibleStruct(
   }
 
   CharUnits Field2Align =
-      CharUnits::fromQuantity(getDataLayout().getABITypeAlignment(Field2Ty));
+      CharUnits::fromQuantity(getDataLayout().getABITypeAlign(Field2Ty));
   CharUnits Field1End =
       Field1Off +
       CharUnits::fromQuantity(getDataLayout().getTypeStoreSize(Field1Ty));

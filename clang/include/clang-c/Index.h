@@ -34,7 +34,7 @@
  * compatible, thus CINDEX_VERSION_MAJOR is expected to remain stable.
  */
 #define CINDEX_VERSION_MAJOR 0
-#define CINDEX_VERSION_MINOR 62
+#define CINDEX_VERSION_MINOR 63
 
 #define CINDEX_VERSION_ENCODE(major, minor) (((major)*10000) + ((minor)*1))
 
@@ -1531,7 +1531,13 @@ enum CXCursorKind {
    */
   CXCursor_RequiresExpr = 154,
 
-  CXCursor_LastExpr = CXCursor_RequiresExpr,
+  /**
+   * Expression that references a C++20 parenthesized list aggregate
+   * initializer.
+   */
+  CXCursor_CXXParenListInitExpr = 155,
+
+  CXCursor_LastExpr = CXCursor_CXXParenListInitExpr,
 
   /* Statements */
   CXCursor_FirstStmt = 200,

@@ -47,6 +47,8 @@ Non-comprehensive list of changes in this release
    is not a constant in coroutines. This decision may cause unnecessary
    performance regressions and we plan to fix it in later versions.
 
+*  The LoongArch target is promoted to "official" (see below for more details).
+
 * ...
 
 Update on required toolchains to build LLVM
@@ -108,18 +110,37 @@ Changes to the LLVM IR
   types that need to be preserved through the optimizer, but otherwise are not
   introspectable by target-independent optimizations.
 
+* Added ``uinc_wrap`` and ``udec_wrap`` operations to ``atomicrmw``.
+
+* Renamed ``llvm.flt.rounds`` intrinsic to ``llvm.get.rounding``.
+
 Changes to building LLVM
 ------------------------
 
 Changes to TableGen
 -------------------
 
+Changes to Interprocedural Optimizations
+----------------------------------------
+
+* Function Specialization has been integrated into IPSCCP.
+* Specialization of functions has been enabled by default at all
+  optimization levels except Os, Oz. This has exposed a mis-compilation
+  in SPEC/CINT2017rate/502.gcc_r when built via the LLVM Test Suite with
+  both LTO and PGO enabled, but without the option -fno-strict-aliasing.
+
 Changes to the AArch64 Backend
 ------------------------------
 
 * Added support for the Cortex-A715 CPU.
 * Added support for the Cortex-X3 CPU.
+* Added support for the Neoverse V2 CPU.
 * Added support for assembly for RME MEC (Memory Encryption Contexts).
+* Added codegen support for the Armv8.3 Complex Number extension.
+* Implemented `Function Multi Versioning
+  <https://arm-software.github.io/acle/main/acle.html#function-multi-versioning>`_
+  in accordance with Arm C Language Extensions specification. Currently in Beta
+  state.
 
 Changes to the AMDGPU Backend
 -----------------------------
@@ -127,9 +148,14 @@ Changes to the AMDGPU Backend
 Changes to the ARM Backend
 --------------------------
 
-* Support for targeting armv2, armv2A, armv3 and armv3M has been removed.
+* Support for targeting Armv2, Armv2A, Armv3 and Armv3M has been removed.
   LLVM did not, and was not ever likely to generate correct code for those
   architecture versions so their presence was misleading.
+* Added codegen support for the complex arithmetic instructions in MVE.
+* Added Armv4 and Armv4T compatible thunks. LLD will no longer generate BX
+  instructions for Armv4 or BLX instructions for either Armv4 or Armv4T. Armv4T
+  is now fully supported.
+* Added compiler-rt builtins support for Armv4T, Armv5TE and Armv6.
 
 Changes to the AVR Backend
 --------------------------
@@ -142,7 +168,23 @@ Changes to the DirectX Backend
 Changes to the Hexagon Backend
 ------------------------------
 
-* ...
+* The Hexagon backend now support V71 and V73 ISA.
+
+Changes to the LoongArch Backend
+--------------------------------
+
+* The LoongArch target is no longer "experimental"! It's now built by default,
+  rather than needing to be enabled with ``LLVM_EXPERIMENTAL_TARGETS_TO_BUILD``.
+
+* The backend has full codegen support for the base (both integer and
+  floating-point) instruction set and it conforms to psABI v2. Testing has been
+  performed with Linux, including native compilation of a large corpus of Linux
+  applications.
+
+* Support GHC calling convention.
+
+* Initial JITLink support is added.
+  (`D141036 <https://reviews.llvm.org/D141036>`_)
 
 Changes to the MIPS Backend
 ---------------------------
@@ -152,16 +194,73 @@ Changes to the MIPS Backend
 Changes to the PowerPC Backend
 ------------------------------
 
-* ...
+Common PowerPC improvements
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* Supported selecting floating point and 'sync' family of instructions in
+  GlobalISel PowerPC.
+* Comparison operations are now optimized by record form instructions.
+* ``__test_data_class`` built-in now accepts ``__float128`` arguments for
+  Power9 and newer.
+* Fixed incorrect fence insertion in atomic FP operations on PowerPC.
+* Fixed alignment of aggregate with smaller size than register in variadic
+  function on PowerPC 64-bit.
+* CTR loops on PowerPC are now generated after instruction selection.
+* Enabled track-subreg-liveness option by default.
+* Store of link register in function prologue are now generated in location
+  after stack pointer update instructions.
+* Code generation improvements for atomic operations, vector permutes, and
+  constant materialization for some floating point constants.
+* Implement new register classes and a number of new instructions for ``mcpu=future``.
+* Implement byte reverse instructions, and VSX Scalar Quad Precision compares
+  for ``mcpu=pwr10``.
+* Improved load-store forwarding for big-endian mode.
+* Bug fixes.
+
+AIX improvements
+^^^^^^^^^^^^^^^^
+
+* Supported TOC-data, overflow section, R_RBR relocation in XCOFF.
+* Fixed behavior of function sections, cold attribute, and handling of TLS symbols' name prefixes in XCOFF.
+* Fixed redundant spill and reload on AIX 64-bit when paired vector are enabled.
+* Disabled location attribution generation of TLS variables.
+* Fixed the mapping of built-in functions ``__builtin_frexpl``,
+  ``__builtin_ldexpl``, and ``__builtin_modfl`` to ``libm`` routines in 64-bit
+  ``long double`` mode.
+* Implemented ``libunwind`` function ``_Unwind_FindEnclosingFunction`` using
+  traceback table on AIX.
+* Changed to use non-unique implementation for ``typeinfo`` comparison.
+* Codegen work done for ``-pg`` to generate correct calls to ``__mcount``.
 
 Changes to the RISC-V Backend
 -----------------------------
 
+* :doc:`RISCVUsage` was introduced to document the status of support within
+  LLVM for various RISC-V instruction set extensions.
 * Support for the unratified Zbe, Zbf, Zbm, Zbp, Zbr, and Zbt extensions have
   been removed.
 * i32 is now a native type in the datalayout string. This enables
   LoopStrengthReduce for loops with i32 induction variables, among other
   optimizations.
+* MC layer support was added for the experimental Zca, Zcd, Zcf, Zihintntl, Ztso,
+  and Zawrs extensions.
+* Codegen support was added for the experimental Zca extension and for the
+  Zfhmin extension.
+* MC layer and codegen support was added for the custom XVentanaCondOps and
+  XTHeadVdot extensions.
+* A target feature was introduced to force-enable atomics.
+* Support was added for lowering HWASAN intrinsics.
+* The short forward branch optimisation beneficial to the SiFive Series 7 was
+  implemented.
+* A Syntacore SCR1 CPU model was added.
+* Various codegen improvements.
+
+Changes to the SystemZ Backend
+------------------------------
+
+* The datalayout string now only depends on the target triple as expected.
+* The GNU attribute for a visible vector ABI is now emitted.
+* Align 128 bit integers to 8 bytes only, per the ABI.
 
 Changes to the WebAssembly Backend
 ----------------------------------
@@ -183,6 +282,25 @@ Changes to the Windows Target
   the OS now spans out threads automatically to all processors. This also fixes
   an affinity mask issue.
   (`D138747 <https://reviews.llvm.org/D138747>`_)
+
+* When building LLVM and related tools for Windows with Clang in MinGW mode,
+  hidden symbol visiblity is now used to reduce the number of exports in
+  builds with dylibs (``LLVM_BUILD_LLVM_DYLIB`` or ``LLVM_LINK_LLVM_DYLIB``),
+  making such builds more manageable without running into the limit of
+  number of exported symbols.
+
+* AArch64 SEH unwind info generation bugs have been fixed; there were minor
+  cases of mismatches between the generated unwind info and actual
+  prologues/epilogues earlier in some cases.
+
+* AArch64 SEH unwind info is now generated correctly for the AArch64
+  security features BTI (Branch Target Identification) and PAC (Pointer
+  Authentication Code). In particular, using PAC with older versions of LLVM
+  would generate code that would fail to unwind at runtime, if the host
+  actually would use the pointer authentication feature.
+
+* Fixed stack alignment on Windows on AArch64, for stack frames with a
+  large enough allocation that requires stack probing.
 
 Changes to the X86 Backend
 --------------------------
@@ -252,6 +370,12 @@ Previously when emitting DWARF v4 and tuning for GDB, llc would use DWARF v2's
 Support for ``DW_AT_data_bit_offset`` was added in GDB 8.0. For earlier versions,
 you can use llc's ``-dwarf-version=3`` option to emit compatible DWARF.
 
+When emitting CodeView debug information, LLVM will now emit S_CONSTANT records
+for variables optimized into a constant via the SROA and SCCP passes.
+(`D138995 <https://reviews.llvm.org/D138995>`_)
+
+``DW_LANG_C11`` now respects ``-gstrict-dwarf`` option.
+
 Changes to the LLVM tools
 ---------------------------------
 
@@ -263,18 +387,59 @@ Changes to the LLVM tools
   that consume ``llvm-readobj``'s JSON output should update their parsers
   accordingly.
 
+* ``llvm-readobj`` now supports a new option ``--loader-section-header`` to
+  display the loader section header of XCOFF object tiles
+
+* ``llvm-readobj`` now supports a new option ``--loader-section-header`` to
+  display the symbol table of the loader section of XCOFF object files
+
+* ``llvm-readobj`` now supports a new option ``--loader-section-header`` to
+  display relocation entries in the loader section of XCOFF object files
+
+* ``llvm-readobj`` now supports a new option ``--exception-section`` to
+  display exception section entries from XCOFF object files
+
 * ``llvm-objdump`` now uses ``--print-imm-hex`` by default, which brings its
   default behavior closer in line with ``objdump``.
+
+* ``llvm-objcopy`` no longer writes corrupt addresses to empty sections if
+  the input file had a nonzero address to an empty section.
+
+* ``llvm-nm`` now supports the environment variable ``OBJECT_MODE`` for the ``-X``
+  option on AIX OS
 
 Changes to LLDB
 ---------------------------------
 
+* Initial support for debugging Linux LoongArch 64-bit binaries.
+
+* Improvements in COFF symbol handling; previously a DLL (without any other
+  debug info) would only use the DLL's exported symbols, while it now also
+  uses the full list of internal symbols, if available.
+
+* Avoiding duplicate DLLs in the runtime list of loaded modules on Windows.
+
 Changes to Sanitizers
 ---------------------
 
+* Many Sanitizers (asan, fuzzer, lsan, safestack, scudo, tsan, ubsan) have
+  support for Linux LoongArch 64-bit variant. Some of them may be rudimentary.
 
 Other Changes
 -------------
+
+* lit no longer supports using substrings of the default target triple as
+  feature names in ``UNSUPPORTED:`` and ``XFAIL:`` directives. These have been
+  replaced by the ``target=<triple>`` feature, and tests can use regex
+  matching to achieve the same effect. For example, ``UNSUPPORTED: arm``
+  would now be ``UNSUPPORTED: target=arm{{.*}}`` and ``XFAIL: windows``
+  would now be ``XFAIL: target={{.*}}-windows{{.*}}``.
+
+* When cross compiling LLVM (or building with ``LLVM_OPTIMIZED_TABLEGEN``),
+  it is now possible to point the build to prebuilt versions of all the
+  host tools with one CMake variable, ``LLVM_NATIVE_TOOL_DIR``, instead of
+  having to point out each individual tool with variables such as
+  ``LLVM_TABLEGEN``, ``CLANG_TABLEGEN``, ``LLDB_TABLEGEN`` etc.
 
 External Open Source Projects Using LLVM 15
 ===========================================

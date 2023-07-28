@@ -41,7 +41,7 @@ public:
 
   // Returns the token that would be returned by the next call to
   // getNextToken().
-  virtual FormatToken *peekNextToken() = 0;
+  virtual FormatToken *peekNextToken(bool SkipComment = false) = 0;
 
   // Returns whether we are at the end of the file.
   // This can be different from whether getNextToken() returned an eof token
@@ -169,10 +169,10 @@ public:
     return PreviousTokenSource->getPreviousToken();
   }
 
-  FormatToken *peekNextToken() override {
+  FormatToken *peekNextToken(bool SkipComment) override {
     if (eof())
       return &FakeEOF;
-    return PreviousTokenSource->peekNextToken();
+    return PreviousTokenSource->peekNextToken(SkipComment);
   }
 
   bool isEOF() override { return PreviousTokenSource->isEOF(); }
@@ -288,8 +288,11 @@ public:
     return Position > 0 ? Tokens[Position - 1] : nullptr;
   }
 
-  FormatToken *peekNextToken() override {
+  FormatToken *peekNextToken(bool SkipComment) override {
     int Next = Position + 1;
+    if (SkipComment)
+      while (Tokens[Next]->is(tok::comment))
+        ++Next;
     LLVM_DEBUG({
       llvm::dbgs() << "Peeking ";
       dbgToken(Next);
@@ -590,8 +593,9 @@ bool UnwrappedLineParser::parseLevel(const FormatToken *OpeningBrace,
       [[fallthrough]];
     }
     case tok::kw_case:
-      if (Style.isVerilog() ||
+      if (Style.isProto() || Style.isVerilog() ||
           (Style.isJavaScript() && Line->MustBeDeclaration)) {
+        // Proto: there are no switch/case statements
         // Verilog: Case labels don't have this word. We handle case
         // labels including default in TokenAnnotator.
         // JavaScript: A 'case: string' style field declaration.
@@ -1434,7 +1438,15 @@ static bool isC78ParameterDecl(const FormatToken *Tok, const FormatToken *Next,
   return Tok->Previous && Tok->Previous->isOneOf(tok::l_paren, tok::comma);
 }
 
-void UnwrappedLineParser::parseModuleImport() {
+bool UnwrappedLineParser::parseModuleImport() {
+  assert(FormatTok->is(Keywords.kw_import) && "'import' expected");
+
+  if (auto Token = Tokens->peekNextToken(/*SkipComment=*/true);
+      !Token->Tok.getIdentifierInfo() &&
+      !Token->isOneOf(tok::colon, tok::less, tok::string_literal)) {
+    return false;
+  }
+
   nextToken();
   while (!eof()) {
     if (FormatTok->is(tok::colon)) {
@@ -1461,6 +1473,7 @@ void UnwrappedLineParser::parseModuleImport() {
   }
 
   addUnwrappedLine();
+  return true;
 }
 
 // readTokenWithJavaScriptASI reads the next token and terminates the current
@@ -1620,7 +1633,11 @@ void UnwrappedLineParser::parseStructuralElement(
     // e.g. "default void f() {}" in a Java interface.
     break;
   case tok::kw_case:
-    // In Verilog switch is called case.
+    // Proto: there are no switch/case statements.
+    if (Style.isProto()) {
+      nextToken();
+      return;
+    }
     if (Style.isVerilog()) {
       parseBlock();
       addUnwrappedLine();
@@ -1677,14 +1694,12 @@ void UnwrappedLineParser::parseStructuralElement(
     }
     if (Style.isCpp()) {
       nextToken();
-      if (FormatTok->is(Keywords.kw_import)) {
-        parseModuleImport();
-        return;
-      }
       if (FormatTok->is(tok::kw_namespace)) {
         parseNamespace();
         return;
       }
+      if (FormatTok->is(Keywords.kw_import) && parseModuleImport())
+        return;
     }
     break;
   case tok::kw_inline:
@@ -1721,10 +1736,8 @@ void UnwrappedLineParser::parseStructuralElement(
         addUnwrappedLine();
         return;
       }
-      if (Style.isCpp()) {
-        parseModuleImport();
+      if (Style.isCpp() && parseModuleImport())
         return;
-      }
     }
     if (Style.isCpp() &&
         FormatTok->isOneOf(Keywords.kw_signals, Keywords.kw_qsignals,
@@ -1893,7 +1906,9 @@ void UnwrappedLineParser::parseStructuralElement(
       // declaration.
       if (!IsTopLevel || !Style.isCpp() || !Previous || eof())
         break;
-      if (isC78ParameterDecl(FormatTok, Tokens->peekNextToken(), Previous)) {
+      if (isC78ParameterDecl(FormatTok,
+                             Tokens->peekNextToken(/*SkipComment=*/true),
+                             Previous)) {
         addUnwrappedLine();
         return;
       }
@@ -2100,6 +2115,11 @@ void UnwrappedLineParser::parseStructuralElement(
       parseNew();
       break;
     case tok::kw_case:
+      // Proto: there are no switch/case statements.
+      if (Style.isProto()) {
+        nextToken();
+        return;
+      }
       // In Verilog switch is called case.
       if (Style.isVerilog()) {
         parseBlock();
@@ -2358,7 +2378,7 @@ bool UnwrappedLineParser::tryToParseLambdaIntroducer() {
   if (FormatTok->is(tok::l_square))
     return false;
   if (FormatTok->is(tok::r_square)) {
-    const FormatToken *Next = Tokens->peekNextToken();
+    const FormatToken *Next = Tokens->peekNextToken(/*SkipComment=*/true);
     if (Next->is(tok::greater))
       return false;
   }
@@ -2719,16 +2739,17 @@ void UnwrappedLineParser::handleAttributes() {
   // Handle AttributeMacro, e.g. `if (x) UNLIKELY`.
   if (FormatTok->is(TT_AttributeMacro))
     nextToken();
-  handleCppAttributes();
+  if (FormatTok->is(tok::l_square))
+    handleCppAttributes();
 }
 
 bool UnwrappedLineParser::handleCppAttributes() {
   // Handle [[likely]] / [[unlikely]] attributes.
-  if (FormatTok->is(tok::l_square) && tryToParseSimpleAttribute()) {
-    parseSquare();
-    return true;
-  }
-  return false;
+  assert(FormatTok->is(tok::l_square));
+  if (!tryToParseSimpleAttribute())
+    return false;
+  parseSquare();
+  return true;
 }
 
 /// Returns whether \c Tok begins a block.
@@ -3835,7 +3856,7 @@ void UnwrappedLineParser::parseRecord(bool ParseAsExpr) {
   // An [[attribute]] can be before the identifier.
   while (FormatTok->isOneOf(tok::identifier, tok::coloncolon, tok::hashhash,
                             tok::kw___attribute, tok::kw___declspec,
-                            tok::kw_alignas, tok::l_square, tok::r_square) ||
+                            tok::kw_alignas, tok::l_square) ||
          ((Style.Language == FormatStyle::LK_Java || Style.isJavaScript()) &&
           FormatTok->isOneOf(tok::period, tok::comma))) {
     if (Style.isJavaScript() &&
@@ -3849,21 +3870,15 @@ void UnwrappedLineParser::parseRecord(bool ParseAsExpr) {
         continue;
       }
     }
+    if (FormatTok->is(tok::l_square) && handleCppAttributes())
+      continue;
     bool IsNonMacroIdentifier =
         FormatTok->is(tok::identifier) &&
         FormatTok->TokenText != FormatTok->TokenText.upper();
     nextToken();
-    // We can have macros or attributes in between 'class' and the class name.
-    if (!IsNonMacroIdentifier) {
-      if (FormatTok->is(tok::l_paren)) {
-        parseParens();
-      } else if (FormatTok->is(TT_AttributeSquare)) {
-        parseSquare();
-        // Consume the closing TT_AttributeSquare.
-        if (FormatTok->Next && FormatTok->is(TT_AttributeSquare))
-          nextToken();
-      }
-    }
+    // We can have macros in between 'class' and the class name.
+    if (!IsNonMacroIdentifier && FormatTok->is(tok::l_paren))
+      parseParens();
   }
 
   // Note that parsing away template declarations here leads to incorrectly

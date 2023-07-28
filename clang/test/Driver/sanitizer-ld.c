@@ -423,8 +423,7 @@
 // RUN:     --target=x86_64-apple-darwin -fuse-ld=ld -static-libsan \
 // RUN:     --sysroot=%S/Inputs/basic_linux_tree \
 // RUN:   | FileCheck --check-prefix=CHECK-UBSAN-STATIC-DARWIN %s
-// CHECK-UBSAN-STATIC-DARWIN: "{{.*}}ld{{(.exe)?}}"
-// CHECK-UBSAN-STATIC-DARWIN: "{{.*}}libclang_rt.ubsan_osx.a"
+// CHECK-UBSAN-STATIC-DARWIN: {{.*}}error: static UndefinedBehaviorSanitizer runtime is not supported on darwin
 
 // RUN: %clang -fsanitize=address,undefined -### %s 2>&1 \
 // RUN:     --target=i386-unknown-linux -fuse-ld=ld \
@@ -699,6 +698,11 @@
 // RUN:     --target=riscv64-unknown-linux -fuse-ld=ld \
 // RUN:   | FileCheck --check-prefix=CHECK-SHADOWCALLSTACK-LINUX-RISCV64 %s
 // CHECK-SHADOWCALLSTACK-LINUX-RISCV64: '-fsanitize=shadow-call-stack' only allowed with '-ffixed-x18'
+
+// RUN: %clang -fsanitize=shadow-call-stack -### %s 2>&1 \
+// RUN:     --target=riscv64-unknown-fuchsia -fuse-ld=ld \
+// RUN:   | FileCheck --check-prefix=CHECK-SHADOWCALLSTACK-FUCHSIA-RISCV64 %s
+// CHECK-SHADOWCALLSTACK-FUCHSIA-RISCV64-NOT: error:
 
 // RUN: %clang -fsanitize=shadow-call-stack -### %s 2>&1 \
 // RUN:     --target=aarch64-unknown-linux -fuse-ld=ld -ffixed-x18 \

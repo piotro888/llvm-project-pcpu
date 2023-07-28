@@ -20,7 +20,7 @@ using namespace clang::targets;
 
 static constexpr Builtin::Info BuiltinInfo[] = {
 #define BUILTIN(ID, TYPE, ATTRS)                                               \
-  {#ID, TYPE, ATTRS, nullptr, ALL_LANGUAGES, nullptr},
+  {#ID, TYPE, ATTRS, nullptr, HeaderDesc::NO_HEADER, ALL_LANGUAGES},
 #include "clang/Basic/BuiltinsVE.def"
 };
 
@@ -46,6 +46,6 @@ void VETargetInfo::getTargetDefines(const LangOptions &Opts,
 }
 
 ArrayRef<Builtin::Info> VETargetInfo::getTargetBuiltins() const {
-  return llvm::makeArrayRef(BuiltinInfo,
-                            clang::VE::LastTSBuiltin - Builtin::FirstTSBuiltin);
+  return llvm::ArrayRef(BuiltinInfo,
+                        clang::VE::LastTSBuiltin - Builtin::FirstTSBuiltin);
 }

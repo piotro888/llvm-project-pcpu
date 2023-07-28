@@ -459,6 +459,10 @@ private:
   /// is associated with the list of payload IR operations.
   bool isParam(unsigned resultNumber) const;
 
+  /// Returns `true` if the result identified by its number in the list of
+  /// operation results is associated with something.
+  bool isSet(unsigned resultNumber) const;
+
   /// Storage for pointers to payload IR ops that are associated with results of
   /// a transform IR op. `segments` contains as many entries as the transform IR
   /// op has results, even if some of them are not associated with payload IR
@@ -494,6 +498,9 @@ mapPossibleTopLevelTransformOpBlockArguments(TransformState &state,
 
 /// Verification hook for PossibleTopLevelTransformOpTrait.
 LogicalResult verifyPossibleTopLevelTransformOpTrait(Operation *op);
+
+/// Verification hook for TransformOpInterface.
+LogicalResult verifyTransformOpInterface(Operation *op);
 } // namespace detail
 
 /// This trait is supposed to be attached to Transform dialect operations that
@@ -832,36 +839,33 @@ applyTransformToEach(TransformOpTy transformOp, ArrayRef<Operation *> targets,
   SmallVector<Diagnostic> silenceableStack;
   unsigned expectedNumResults = transformOp->getNumResults();
   for (Operation *target : targets) {
-    // Emplace back a placeholder for the returned new ops and params.
-    // This is filled with `expectedNumResults` if the op fails to apply.
-    ApplyToEachResultList placeholder;
-    placeholder.reserve(expectedNumResults);
-    results.push_back(std::move(placeholder));
-
     auto specificOp = dyn_cast<OpTy>(target);
     if (!specificOp) {
       Diagnostic diag(transformOp->getLoc(), DiagnosticSeverity::Error);
       diag << "transform applied to the wrong op kind";
       diag.attachNote(target->getLoc()) << "when applied to this op";
-      // Producing `expectedNumResults` nullptr is a silenceableFailure mode.
-      // TODO: encode this implicit `expectedNumResults` nullptr ==
-      // silenceableFailure with a proper trait.
-      results.back().assign(expectedNumResults, nullptr);
       silenceableStack.push_back(std::move(diag));
       continue;
     }
 
+    ApplyToEachResultList partialResults;
+    partialResults.reserve(expectedNumResults);
     Location specificOpLoc = specificOp->getLoc();
     DiagnosedSilenceableFailure res =
-        transformOp.applyToOne(specificOp, results.back(), state);
-    if (res.isDefiniteFailure() ||
-        failed(detail::checkApplyToOne(transformOp, specificOpLoc,
-                                       results.back()))) {
+        transformOp.applyToOne(specificOp, partialResults, state);
+    if (res.isDefiniteFailure())
       return DiagnosedSilenceableFailure::definiteFailure();
+
+    if (res.isSilenceableFailure()) {
+      res.takeDiagnostics(silenceableStack);
+      continue;
     }
 
-    if (res.isSilenceableFailure())
-      res.takeDiagnostics(silenceableStack);
+    if (failed(detail::checkApplyToOne(transformOp, specificOpLoc,
+                                       partialResults))) {
+      return DiagnosedSilenceableFailure::definiteFailure();
+    }
+    results.push_back(std::move(partialResults));
   }
   if (!silenceableStack.empty()) {
     return DiagnosedSilenceableFailure::silenceableFailure(

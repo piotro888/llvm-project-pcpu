@@ -28,8 +28,7 @@
 
 using namespace clang::ast_matchers;
 
-namespace clang {
-namespace tidy {
+namespace clang::tidy {
 
 llvm::ArrayRef<
     std::pair<readability::IdentifierNamingCheck::CaseType, StringRef>>
@@ -47,7 +46,7 @@ OptionEnumMapping<
            "Camel_Snake_Case"},
           {readability::IdentifierNamingCheck::CT_CamelSnakeBack,
            "camel_Snake_Back"}};
-  return llvm::makeArrayRef(Mapping);
+  return llvm::ArrayRef(Mapping);
 }
 
 template <>
@@ -62,7 +61,7 @@ struct OptionEnumMapping<
         {HungarianPrefixType::HPT_On, "On"},
         {HungarianPrefixType::HPT_LowerCase, "LowerCase"},
         {HungarianPrefixType::HPT_CamelCase, "CamelCase"}};
-    return llvm::makeArrayRef(Mapping);
+    return llvm::ArrayRef(Mapping);
   }
 };
 
@@ -1451,5 +1450,4 @@ IdentifierNamingCheck::getStyleForFile(StringRef FileName) const {
 }
 
 } // namespace readability
-} // namespace tidy
-} // namespace clang
+} // namespace clang::tidy

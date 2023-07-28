@@ -32,6 +32,7 @@
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Metadata.h"
 #include "llvm/IR/Operator.h"
+#include "llvm/Support/ModRef.h"
 
 using namespace mlir;
 using namespace mlir::LLVM;
@@ -68,27 +69,6 @@ static constexpr StringRef getGlobalCtorsVarName() {
 /// Returns the name of the global_dtors global variables.
 static constexpr StringRef getGlobalDtorsVarName() {
   return "llvm.global_dtors";
-}
-
-/// Creates an attribute containing ABI and preferred alignment numbers parsed
-/// a string. The string may be either "abi:preferred" or just "abi". In the
-/// latter case, the preferred alignment is considered equal to ABI alignment.
-static DenseIntElementsAttr parseDataLayoutAlignment(MLIRContext &ctx,
-                                                     StringRef spec) {
-  auto i32 = IntegerType::get(&ctx, 32);
-
-  StringRef abiString, preferredString;
-  std::tie(abiString, preferredString) = spec.split(':');
-  int abi, preferred;
-  if (abiString.getAsInteger(/*Radix=*/10, abi))
-    return nullptr;
-
-  if (preferredString.empty())
-    preferred = abi;
-  else if (preferredString.getAsInteger(/*Radix=*/10, preferred))
-    return nullptr;
-
-  return DenseIntElementsAttr::get(VectorType::get({2}, i32), {abi, preferred});
 }
 
 /// Returns a supported MLIR floating point type of the given bit width or null
@@ -250,6 +230,45 @@ static SmallVector<int64_t> getPositionFromIndices(ArrayRef<unsigned> indices) {
   return position;
 }
 
+/// Converts the LLVM instructions that have a generated MLIR builder. Using a
+/// static implementation method called from the module import ensures the
+/// builders have to use the `moduleImport` argument and cannot directly call
+/// import methods. As a result, both the intrinsic and the instruction MLIR
+/// builders have to use the `moduleImport` argument and none of them has direct
+/// access to the private module import methods.
+static LogicalResult convertInstructionImpl(OpBuilder &odsBuilder,
+                                            llvm::Instruction *inst,
+                                            ModuleImport &moduleImport) {
+  // Copy the operands to an LLVM operands array reference for conversion.
+  SmallVector<llvm::Value *> operands(inst->operands());
+  ArrayRef<llvm::Value *> llvmOperands(operands);
+
+  // Convert all instructions that provide an MLIR builder.
+#include "mlir/Dialect/LLVMIR/LLVMOpFromLLVMIRConversions.inc"
+  return failure();
+}
+
+/// Creates an attribute containing ABI and preferred alignment numbers parsed
+/// a string. The string may be either "abi:preferred" or just "abi". In the
+/// latter case, the preferred alignment is considered equal to ABI alignment.
+static DenseIntElementsAttr parseDataLayoutAlignment(MLIRContext &ctx,
+                                                     StringRef spec) {
+  auto i32 = IntegerType::get(&ctx, 32);
+
+  StringRef abiString, preferredString;
+  std::tie(abiString, preferredString) = spec.split(':');
+  int abi, preferred;
+  if (abiString.getAsInteger(/*Radix=*/10, abi))
+    return nullptr;
+
+  if (preferredString.empty())
+    preferred = abi;
+  else if (preferredString.getAsInteger(/*Radix=*/10, preferred))
+    return nullptr;
+
+  return DenseIntElementsAttr::get(VectorType::get({2}, i32), {abi, preferred});
+}
+
 /// Translate the given LLVM data layout into an MLIR equivalent using the DLTI
 /// dialect.
 DataLayoutSpecInterface
@@ -336,7 +355,7 @@ ModuleImport::ModuleImport(ModuleOp mlirModule,
       mlirModule(mlirModule), llvmModule(std::move(llvmModule)),
       iface(mlirModule->getContext()),
       typeTranslator(*mlirModule->getContext()),
-      debugImporter(std::make_unique<DebugImporter>(mlirModule->getContext())) {
+      debugImporter(std::make_unique<DebugImporter>(mlirModule)) {
   builder.setInsertionPointToStart(mlirModule.getBody());
 }
 
@@ -349,8 +368,6 @@ MetadataOp ModuleImport::getTBAAMetadataOp() {
 
   builder.setInsertionPointToEnd(mlirModule.getBody());
   tbaaMetadataOp = builder.create<MetadataOp>(loc, getTBAAMetadataOpName());
-  builder.createBlock(&tbaaMetadataOp.getBody());
-  builder.create<ReturnOp>(loc, Value{});
 
   return tbaaMetadataOp;
 }
@@ -388,7 +405,7 @@ LogicalResult ModuleImport::processTBAAMetadata(const llvm::MDNode *node) {
     if (node->getNumOperands() != 1)
       return std::nullopt;
     // If the operand is MDString, then assume that this is a root node.
-    if (auto op0 = dyn_cast<const llvm::MDString>(node->getOperand(0)))
+    if (const auto *op0 = dyn_cast<const llvm::MDString>(node->getOperand(0)))
       return op0->getString();
     return std::nullopt;
   };
@@ -414,7 +431,8 @@ LogicalResult ModuleImport::processTBAAMetadata(const llvm::MDNode *node) {
 
     // TODO: support "new" format (D41501) for type descriptors,
     //       where the first operand is an MDNode.
-    auto identityNode = dyn_cast<const llvm::MDString>(node->getOperand(0));
+    const auto *identityNode =
+        dyn_cast<const llvm::MDString>(node->getOperand(0));
     if (!identityNode)
       return std::nullopt;
 
@@ -480,9 +498,9 @@ LogicalResult ModuleImport::processTBAAMetadata(const llvm::MDNode *node) {
     unsigned numOperands = node->getNumOperands();
     if (numOperands != 3 && numOperands != 4)
       return std::nullopt;
-    auto baseMD = dyn_cast<const llvm::MDNode>(node->getOperand(0));
-    auto accessMD = dyn_cast<const llvm::MDNode>(node->getOperand(1));
-    auto offsetCI =
+    const auto *baseMD = dyn_cast<const llvm::MDNode>(node->getOperand(0));
+    const auto *accessMD = dyn_cast<const llvm::MDNode>(node->getOperand(1));
+    auto *offsetCI =
         llvm::mdconst::dyn_extract<llvm::ConstantInt>(node->getOperand(2));
     if (!baseMD || !accessMD || !offsetCI)
       return std::nullopt;
@@ -496,7 +514,7 @@ LogicalResult ModuleImport::processTBAAMetadata(const llvm::MDNode *node) {
       return std::nullopt;
     bool isConst = false;
     if (numOperands == 4) {
-      auto isConstantCI =
+      auto *isConstantCI =
           llvm::mdconst::dyn_extract<llvm::ConstantInt>(node->getOperand(3));
       if (!isConstantCI) {
         emitError(loc) << "operand '3' must be ConstantInt: "
@@ -516,9 +534,9 @@ LogicalResult ModuleImport::processTBAAMetadata(const llvm::MDNode *node) {
     return true;
   };
 
-  // Insert new operations before the terminator.
+  // Insert new operations at the end of the MetadataOp.
   OpBuilder::InsertionGuard guard(builder);
-  builder.setInsertionPoint(&getTBAAMetadataOp().getBody().back().back());
+  builder.setInsertionPointToEnd(&getTBAAMetadataOp().getBody().back());
   StringAttr metadataOpName = SymbolTable::getSymbolName(getTBAAMetadataOp());
 
   // On the first walk, create SymbolRefAttr's and map them
@@ -595,7 +613,7 @@ LogicalResult ModuleImport::processTBAAMetadata(const llvm::MDNode *node) {
 
 LogicalResult ModuleImport::convertMetadata() {
   OpBuilder::InsertionGuard guard(builder);
-  builder.setInsertionPoint(mlirModule.getBody(), mlirModule.getBody()->end());
+  builder.setInsertionPointToEnd(mlirModule.getBody());
   for (const llvm::Function &func : llvmModule->functions())
     for (const llvm::Instruction &inst : llvm::instructions(func)) {
       llvm::AAMDNodes nodes = inst.getAAMetadata();
@@ -617,13 +635,13 @@ LogicalResult ModuleImport::convertGlobals() {
         globalVar.getName() == getGlobalDtorsVarName()) {
       if (failed(convertGlobalCtorsAndDtors(&globalVar))) {
         return emitError(mlirModule.getLoc())
-               << "unhandled global variable " << diag(globalVar);
+               << "unhandled global variable: " << diag(globalVar);
       }
       continue;
     }
     if (failed(convertGlobal(&globalVar))) {
       return emitError(mlirModule.getLoc())
-             << "unhandled global variable " << diag(globalVar);
+             << "unhandled global variable: " << diag(globalVar);
     }
   }
   return success();
@@ -645,7 +663,9 @@ void ModuleImport::setNonDebugMetadataAttrs(llvm::Instruction *inst,
       continue;
     if (failed(iface.setMetadataAttrs(builder, kind, node, op, *this))) {
       Location loc = debugImporter->translateLoc(inst->getDebugLoc());
-      emitWarning(loc) << "unhandled metadata (" << kind << ") " << diag(*inst);
+      emitWarning(loc) << "unhandled metadata: "
+                       << diagMD(node, llvmModule.get()) << " on "
+                       << diag(*inst);
     }
   }
 }
@@ -948,8 +968,7 @@ ModuleImport::getConstantsToConvert(llvm::Constant *constant) {
 }
 
 FailureOr<Value> ModuleImport::convertConstant(llvm::Constant *constant) {
-  // Constants have no location attached.
-  Location loc = UnknownLoc::get(context);
+  Location loc = mlirModule.getLoc();
 
   // Convert constants that can be represented as attributes.
   if (Attribute attr = getConstantAsAttr(constant)) {
@@ -1043,7 +1062,7 @@ FailureOr<Value> ModuleImport::convertConstant(llvm::Constant *constant) {
     return root;
   }
 
-  return emitError(loc) << "unhandled constant " << diag(*constant);
+  return emitError(loc) << "unhandled constant: " << diag(*constant);
 }
 
 FailureOr<Value> ModuleImport::convertConstantExpr(llvm::Constant *constant) {
@@ -1088,10 +1107,10 @@ FailureOr<Value> ModuleImport::convertValue(llvm::Value *value) {
   if (auto *constant = dyn_cast<llvm::Constant>(value))
     return convertConstantExpr(constant);
 
-  Location loc = UnknownLoc::get(context);
+  Location loc = mlirModule.getLoc();
   if (auto *inst = dyn_cast<llvm::Instruction>(value))
     loc = translateLoc(inst->getDebugLoc());
-  return emitError(loc) << "unhandled value " << diag(*value);
+  return emitError(loc) << "unhandled value: " << diag(*value);
 }
 
 FailureOr<SmallVector<Value>>
@@ -1163,26 +1182,16 @@ ModuleImport::convertCallTypeAndOperands(llvm::CallBase *callInst,
   return success();
 }
 
-LogicalResult ModuleImport::convertIntrinsic(OpBuilder &odsBuilder,
-                                             llvm::CallInst *inst) {
+LogicalResult ModuleImport::convertIntrinsic(llvm::CallInst *inst) {
   if (succeeded(iface.convertIntrinsic(builder, inst, *this)))
     return success();
 
   Location loc = translateLoc(inst->getDebugLoc());
-  return emitError(loc) << "unhandled intrinsic " << diag(*inst);
+  return emitError(loc) << "unhandled intrinsic: " << diag(*inst);
 }
 
-LogicalResult ModuleImport::convertInstruction(OpBuilder &odsBuilder,
-                                               llvm::Instruction *inst) {
-  // Copy the operands to an LLVM operands array reference for conversion.
-  SmallVector<llvm::Value *> operands(inst->operands());
-  ArrayRef<llvm::Value *> llvmOperands(operands);
-  ModuleImport &moduleImport = *this;
-
-  // Convert all instructions that provide an MLIR builder.
-#include "mlir/Dialect/LLVMIR/LLVMOpFromLLVMIRConversions.inc"
-
-  // Convert all remaining instructions that do not provide an MLIR builder.
+LogicalResult ModuleImport::convertInstruction(llvm::Instruction *inst) {
+  // Convert all instructions that do not provide an MLIR builder.
   Location loc = translateLoc(inst->getDebugLoc());
   if (inst->getOpcode() == llvm::Instruction::Br) {
     auto *brInst = cast<llvm::BranchInst>(inst);
@@ -1351,7 +1360,11 @@ LogicalResult ModuleImport::convertInstruction(OpBuilder &odsBuilder,
     return success();
   }
 
-  return emitError(loc) << "unhandled instruction " << diag(*inst);
+  // Convert all instructions that have an mlirBuilder.
+  if (succeeded(convertInstructionImpl(builder, inst, *this)))
+    return success();
+
+  return emitError(loc) << "unhandled instruction: " << diag(*inst);
 }
 
 LogicalResult ModuleImport::processInstruction(llvm::Instruction *inst) {
@@ -1364,11 +1377,11 @@ LogicalResult ModuleImport::processInstruction(llvm::Instruction *inst) {
   if (auto *callInst = dyn_cast<llvm::CallInst>(inst)) {
     llvm::Function *callee = callInst->getCalledFunction();
     if (callee && callee->isIntrinsic())
-      return convertIntrinsic(builder, callInst);
+      return convertIntrinsic(callInst);
   }
 
   // Convert all remaining LLVM instructions to MLIR operations.
-  return convertInstruction(builder, inst);
+  return convertInstruction(inst);
 }
 
 FlatSymbolRefAttr ModuleImport::getPersonalityAsAttr(llvm::Function *f) {
@@ -1393,13 +1406,80 @@ FlatSymbolRefAttr ModuleImport::getPersonalityAsAttr(llvm::Function *f) {
   return FlatSymbolRefAttr();
 }
 
+static void processMemoryEffects(llvm::Function *func, LLVMFuncOp funcOp) {
+  llvm::MemoryEffects memEffects = func->getMemoryEffects();
+
+  auto othermem = convertModRefInfoFromLLVM(
+      memEffects.getModRef(llvm::MemoryEffects::Location::Other));
+  auto argMem = convertModRefInfoFromLLVM(
+      memEffects.getModRef(llvm::MemoryEffects::Location::ArgMem));
+  auto inaccessibleMem = convertModRefInfoFromLLVM(
+      memEffects.getModRef(llvm::MemoryEffects::Location::InaccessibleMem));
+  auto memAttr = MemoryEffectsAttr::get(funcOp.getContext(), othermem, argMem,
+                                        inaccessibleMem);
+  // Only set the attr when it does not match the default value.
+  if (memAttr.isReadWrite())
+    return;
+  funcOp.setMemoryAttr(memAttr);
+}
+
+static void processPassthroughAttrs(llvm::Function *func, LLVMFuncOp funcOp) {
+  MLIRContext *context = funcOp.getContext();
+  SmallVector<Attribute> passthroughs;
+  llvm::AttributeSet funcAttrs = func->getAttributes().getAttributes(
+      llvm::AttributeList::AttrIndex::FunctionIndex);
+  for (llvm::Attribute attr : funcAttrs) {
+    // Skip the memory attribute since the LLVMFuncOp has an explicit memory
+    // attribute.
+    if (attr.hasAttribute(llvm::Attribute::Memory))
+      continue;
+
+    // Skip invalid type attributes.
+    if (attr.isTypeAttribute()) {
+      emitWarning(funcOp.getLoc(),
+                  "type attributes on a function are invalid, skipping it");
+      continue;
+    }
+
+    StringRef attrName;
+    if (attr.isStringAttribute())
+      attrName = attr.getKindAsString();
+    else
+      attrName = llvm::Attribute::getNameFromAttrKind(attr.getKindAsEnum());
+    auto keyAttr = StringAttr::get(context, attrName);
+
+    if (attr.isStringAttribute()) {
+      StringRef val = attr.getValueAsString();
+      if (val.empty()) {
+        passthroughs.push_back(keyAttr);
+        continue;
+      }
+      passthroughs.push_back(
+          ArrayAttr::get(context, {keyAttr, StringAttr::get(context, val)}));
+      continue;
+    }
+    if (attr.isIntAttribute()) {
+      auto val = std::to_string(attr.getValueAsInt());
+      passthroughs.push_back(
+          ArrayAttr::get(context, {keyAttr, StringAttr::get(context, val)}));
+      continue;
+    }
+    if (attr.isEnumAttribute()) {
+      passthroughs.push_back(keyAttr);
+      continue;
+    }
+
+    llvm_unreachable("unexpected attribute kind");
+  }
+
+  if (!passthroughs.empty())
+    funcOp.setPassthroughAttr(ArrayAttr::get(context, passthroughs));
+}
+
 void ModuleImport::processFunctionAttributes(llvm::Function *func,
                                              LLVMFuncOp funcOp) {
-  auto addNamedUnitAttr = [&](StringRef name) {
-    return funcOp->setAttr(name, UnitAttr::get(context));
-  };
-  if (func->doesNotAccessMemory())
-    addNamedUnitAttr(LLVMDialect::getReadnoneAttrName());
+  processMemoryEffects(func, funcOp);
+  processPassthroughAttrs(func, funcOp);
 }
 
 LogicalResult ModuleImport::processFunction(llvm::Function *func) {
@@ -1419,7 +1499,7 @@ LogicalResult ModuleImport::processFunction(llvm::Function *func) {
   builder.setInsertionPoint(mlirModule.getBody(), mlirModule.getBody()->end());
 
   LLVMFuncOp funcOp = builder.create<LLVMFuncOp>(
-      UnknownLoc::get(context), func->getName(), functionType,
+      mlirModule.getLoc(), func->getName(), functionType,
       convertLinkageFromLLVM(func->getLinkage()), dsoLocal, cconv);
 
   // Set the function debug information if available.
@@ -1458,8 +1538,7 @@ LogicalResult ModuleImport::processFunction(llvm::Function *func) {
   if (FlatSymbolRefAttr personality = getPersonalityAsAttr(func))
     funcOp.setPersonalityAttr(personality);
   else if (func->hasPersonalityFn())
-    emitWarning(UnknownLoc::get(context),
-                "could not deduce personality, skipping it");
+    emitWarning(funcOp.getLoc(), "could not deduce personality, skipping it");
 
   if (func->hasGC())
     funcOp.setGarbageCollector(StringRef(func->getGC()));
@@ -1474,8 +1553,9 @@ LogicalResult ModuleImport::processFunction(llvm::Function *func) {
     if (!iface.isConvertibleMetadata(kind))
       continue;
     if (failed(iface.setMetadataAttrs(builder, kind, node, funcOp, *this))) {
-      emitWarning(funcOp->getLoc())
-          << "unhandled function metadata (" << kind << ") " << diag(*func);
+      emitWarning(funcOp.getLoc())
+          << "unhandled function metadata: " << diagMD(node, llvmModule.get())
+          << " on " << diag(*func);
     }
   }
 
@@ -1523,7 +1603,7 @@ LogicalResult ModuleImport::processBasicBlock(llvm::BasicBlock *bb,
       setNonDebugMetadataAttrs(&inst, op);
     } else if (inst.getOpcode() != llvm::Instruction::PHI) {
       Location loc = debugImporter->translateLoc(inst.getDebugLoc());
-      emitWarning(loc) << "dropped instruction " << diag(inst);
+      emitWarning(loc) << "dropped instruction: " << diag(inst);
     }
   }
   return success();
