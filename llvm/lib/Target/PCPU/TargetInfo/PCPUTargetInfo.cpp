@@ -17,6 +17,6 @@ Target &llvm::getThePCPUTarget() {
 }
 
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializePCPUTargetInfo() {
-  RegisterTarget<Triple::pcpu> X(getThePCPUTarget(), "PCPU", "PCPU",
-                                  "PCPU");
+  RegisterTarget<Triple::pcpu> X(getThePCPUTarget(), "pcpu", "pcpu",
+                                  "pcpu");
 }

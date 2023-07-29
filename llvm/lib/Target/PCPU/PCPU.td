@@ -40,7 +40,7 @@ def PCPUAsmParser : AsmParser {
 
 def PCPUAsmParserVariant : AsmParserVariant {
   int Variant = 0;
-  string Name = "PCPU";
+  string Name = "pcpu";
   string BreakCharacters = ".";
   string TokenizingCharacters = "#()[]=:.<>!+*";
 }
