@@ -199,6 +199,7 @@ public:
     MacOSX,
     NetBSD,
     OpenBSD,
+    PiOS,
     Solaris,
     Win32,
     ZOS,
@@ -540,6 +541,10 @@ public:
 
   bool isOSOpenBSD() const {
     return getOS() == Triple::OpenBSD;
+  }
+
+  bool isOSPiOS() const {
+    return getOS() == Triple::PiOS;
   }
 
   bool isOSFreeBSD() const {

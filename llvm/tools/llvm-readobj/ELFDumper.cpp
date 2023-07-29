@@ -1020,6 +1020,7 @@ const EnumEntry<unsigned> ElfOSABI[] = {
   {"AROS",         "AROS",                 ELF::ELFOSABI_AROS},
   {"FenixOS",      "FenixOS",              ELF::ELFOSABI_FENIXOS},
   {"CloudABI",     "CloudABI",             ELF::ELFOSABI_CLOUDABI},
+  {"piOS",         "piOS",                 ELF::ELFOSABI_PIOS},
   {"Standalone",   "Standalone App",       ELF::ELFOSABI_STANDALONE}
 };
 

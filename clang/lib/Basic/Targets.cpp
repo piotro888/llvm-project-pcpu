@@ -133,7 +133,12 @@ TargetInfo *AllocateTarget(const llvm::Triple &Triple,
     return new LanaiTargetInfo(Triple, Opts);
   
   case llvm::Triple::pcpu:
-    return new PCPUTargetInfo(Triple, Opts);
+    switch (os) {
+      case llvm::Triple::PiOS:
+        return new PiOSTargetInfo<PCPUTargetInfo>(Triple, Opts);
+      default:
+        return new PCPUTargetInfo(Triple, Opts);
+    }
 
   case llvm::Triple::aarch64_32:
     if (Triple.isOSDarwin())

@@ -412,6 +412,7 @@ bool InitHeaderSearch::ShouldAddDefaultIncludePaths(
   case llvm::Triple::FreeBSD:
   case llvm::Triple::NetBSD:
   case llvm::Triple::OpenBSD:
+  case llvm::Triple::PiOS:
   case llvm::Triple::Fuchsia:
   case llvm::Triple::Hurd:
   case llvm::Triple::Linux:

@@ -364,6 +364,7 @@ enum {
   ELFOSABI_ARM = 97,           // ARM
   ELFOSABI_C6000_ELFABI = 64,  // Bare-metal TMS320C6000
   ELFOSABI_C6000_LINUX = 65,   // Linux TMS320C6000
+  ELFOSABI_PIOS = 66,          // PiOS
   ELFOSABI_STANDALONE = 255,   // Standalone (embedded) application
   ELFOSABI_LAST_ARCH = 255     // Last Architecture-specific OS ABI
 };

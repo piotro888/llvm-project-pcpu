@@ -41,6 +41,7 @@
 #include "ToolChains/NaCl.h"
 #include "ToolChains/NetBSD.h"
 #include "ToolChains/OpenBSD.h"
+#include "ToolChains/PiOS.h"
 #include "ToolChains/PPCFreeBSD.h"
 #include "ToolChains/PPCLinux.h"
 #include "ToolChains/PS4CPU.h"
@@ -6003,6 +6004,9 @@ const ToolChain &Driver::getToolChain(const ArgList &Args,
       break;
     case llvm::Triple::OpenBSD:
       TC = std::make_unique<toolchains::OpenBSD>(*this, Target, Args);
+      break;
+    case llvm::Triple::PiOS:
+      TC = std::make_unique<toolchains::PiOS>(*this, Target, Args);
       break;
     case llvm::Triple::NetBSD:
       TC = std::make_unique<toolchains::NetBSD>(*this, Target, Args);

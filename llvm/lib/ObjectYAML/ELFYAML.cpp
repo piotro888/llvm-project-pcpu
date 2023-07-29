@@ -404,6 +404,7 @@ void ScalarEnumerationTraits<ELFYAML::ELF_ELFOSABI>::enumeration(
   ECase(ELFOSABI_ARM);
   ECase(ELFOSABI_C6000_ELFABI);
   ECase(ELFOSABI_C6000_LINUX);
+  ECase(ELFOSABI_PIOS);
   ECase(ELFOSABI_STANDALONE);
 #undef ECase
   IO.enumFallback<Hex8>(Value);

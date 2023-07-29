@@ -80,6 +80,8 @@ public:
         return ELF::ELFOSABI_FREEBSD;
       case Triple::Solaris:
         return ELF::ELFOSABI_SOLARIS;
+      case Triple::PiOS:
+        return ELF::ELFOSABI_PIOS;
       default:
         return ELF::ELFOSABI_NONE;
     }

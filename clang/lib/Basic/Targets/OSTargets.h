@@ -495,6 +495,27 @@ public:
   }
 };
 
+// PiOS Target
+template <typename Target>
+class LLVM_LIBRARY_VISIBILITY PiOSTargetInfo : public OSTargetInfo<Target> {
+protected:
+  void getOSDefines(const LangOptions &Opts, const llvm::Triple &Triple,
+                    MacroBuilder &Builder) const override {
+    Builder.defineMacro("__pios__");
+    Builder.defineMacro("__PIOS__");
+    Builder.defineMacro("__ELF__");
+  }
+
+public:
+  PiOSTargetInfo(const llvm::Triple &Triple, const TargetOptions &Opts)
+      : OSTargetInfo<Target>(Triple, Opts) {
+    this->WCharType = this->WIntType = this->SignedInt;
+    this->IntMaxType = TargetInfo::SignedLongLong;
+    this->Int64Type = TargetInfo::SignedLongLong;
+    this->SizeType = TargetInfo::UnsignedInt;
+  }
+};
+
 // PS3 PPU Target
 template <typename Target>
 class LLVM_LIBRARY_VISIBILITY PS3PPUTargetInfo : public OSTargetInfo<Target> {
