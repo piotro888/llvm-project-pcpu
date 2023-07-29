@@ -18,7 +18,7 @@ namespace llvm {
 
 class PCPUMCExpr : public MCTargetExpr {
 public:
-  enum VariantKind { VK_PCPU_None, VK_PCPU_PC_ADDR };
+  enum VariantKind { VK_PCPU_None, VK_PCPU_PC_ADDR, VK_PCPU_PC_ADDR_CONST };
 
 private:
   const VariantKind Kind;

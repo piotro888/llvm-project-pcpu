@@ -11,7 +11,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "PCPUAluCode.h"
 #include "PCPUCondCode.h"
 #include "PCPUInstrInfo.h"
@@ -180,7 +179,7 @@ const MCExpr *PCPUAsmPrinter::lowerConstant(const Constant *CV) {
       // program memory reference
       if(isa<Function>(GV)) {
         const MCExpr *Expr = MCSymbolRefExpr::create(getSymbol(GV), Ctx);
-        return PCPUMCExpr::create(PCPUMCExpr::VK_PCPU_PC_ADDR, Expr, Ctx);
+        return PCPUMCExpr::create(PCPUMCExpr::VK_PCPU_PC_ADDR_CONST, Expr, Ctx);
       }
   }
   return AsmPrinter::lowerConstant(CV);

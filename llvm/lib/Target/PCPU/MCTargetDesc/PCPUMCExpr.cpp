@@ -31,6 +31,7 @@ PCPU::Fixups PCPUMCExpr::getFixupKind() const {
     Kind = PCPU::FIXUP_PCPU_IMM;
     break;
   case VK_PCPU_PC_ADDR:
+  case VK_PCPU_PC_ADDR_CONST:
     Kind = PCPU::FIXUP_PCPU_PC;
     break;
   default:
@@ -49,6 +50,10 @@ void PCPUMCExpr::printImpl(raw_ostream &OS, const MCAsmInfo *MAI) const {
   switch (Kind) {
   case VK_PCPU_PC_ADDR:
     Expr->print(OS, MAI);
+    return;
+  case VK_PCPU_PC_ADDR_CONST:
+    Expr->print(OS, MAI);
+    OS<<"@pcref";
     return;
   default:
     llvm_unreachable("Invalid kind!");
@@ -78,7 +83,7 @@ bool PCPUMCExpr::evaluateAsRelocatableImpl(MCValue &Res,
     MCSymbolRefExpr::VariantKind Modifier = Sym->getKind();
     if (Modifier != MCSymbolRefExpr::VK_None)
       return false;
-    if (Kind == VK_PCPU_PC_ADDR) {
+    if (Kind == VK_PCPU_PC_ADDR || Kind == VK_PCPU_PC_ADDR_CONST) {
       Modifier = MCSymbolRefExpr::VK_PCPU_PC_REF;
     }
 

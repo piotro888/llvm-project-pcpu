@@ -345,7 +345,7 @@ StringRef MCSymbolRefExpr::getVariantKindName(VariantKind Kind) {
   case VK_PPC_LOCAL: return "local";
   case VK_PPC_NOTOC: return "notoc";
   case VK_PPC_PCREL_OPT: return "<<invalid>>";
-  case VK_PCPU_PC_REF: return "pcr";
+  case VK_PCPU_PC_REF: return "pcref";
   case VK_COFF_IMGREL32: return "IMGREL";
   case VK_Hexagon_LO16: return "LO16";
   case VK_Hexagon_HI16: return "HI16";
@@ -525,6 +525,7 @@ MCSymbolRefExpr::getVariantKindForName(StringRef Name) {
     .Case("tls_gd_lo", VK_VE_TLS_GD_LO32)
     .Case("tpoff_hi", VK_VE_TPOFF_HI32)
     .Case("tpoff_lo", VK_VE_TPOFF_LO32)
+    .Case("pcref", VK_PCPU_PC_REF)
     .Default(VK_Invalid);
 }
 
