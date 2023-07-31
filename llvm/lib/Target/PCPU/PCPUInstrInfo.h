@@ -55,6 +55,24 @@ public:
 
   // Lower some of pseudo instructions after register allocation.
   bool expandPostRAPseudo(MachineInstr &MI) const override;
+
+  bool analyzeBranch(MachineBasicBlock &MBB, MachineBasicBlock *&TrueBlock,
+                     MachineBasicBlock *&FalseBlock,
+                     SmallVectorImpl<MachineOperand> &Condition,
+                     bool AllowModify) const override;
+
+  unsigned removeBranch(MachineBasicBlock &MBB,
+                        int *BytesRemoved = nullptr) const override;
+
+
+  unsigned insertBranch(MachineBasicBlock &MBB, MachineBasicBlock *TrueBlock,
+                        MachineBasicBlock *FalseBlock,
+                        ArrayRef<MachineOperand> Condition,
+                        const DebugLoc &DL,
+                        int *BytesAdded = nullptr) const override;
+
+  bool reverseBranchCondition(
+      SmallVectorImpl<MachineOperand> &Condition) const override;
 };
 
 } // namespace llvm
