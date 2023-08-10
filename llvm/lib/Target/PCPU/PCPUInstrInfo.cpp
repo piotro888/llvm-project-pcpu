@@ -97,8 +97,9 @@ bool PCPUInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
 
         BuildMI(MBB, MI, MI.getDebugLoc(), get(PCPU::SRL), PCPU::RCA).addImm(0);
         BuildMI(MBB, MI, MI.getDebugLoc(), get(PCPU::ADI), PCPU::RCA).addReg(PCPU::RCA).addImm(3);
-        BuildMI(MBB, MI, MI.getDebugLoc(), get(PCPU::JIND)).addReg(TargetReg);
-        
+        // FIXED: Don't use JIND, because it setes additional paramters and breaks optimization by discarding following code
+        BuildMI(MBB, MI, MI.getDebugLoc(), get(PCPU::SRS)).addReg(TargetReg).addImm(0);
+
         MBB.erase(MI);
         
         return true; 
