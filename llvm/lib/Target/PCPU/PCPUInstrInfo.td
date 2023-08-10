@@ -465,7 +465,7 @@ let isBranch = 1, isTerminator = 1, isBarrier = 1 in {
     let cond = 0;
   }
 
-  let Uses = [FREG] in {
+  let isBarrier = 0, Uses = [FREG] in {
       def JCOND : PCPUFJMPCC<0b0001110, (outs), (ins brtarget:$target, CCOp:$cond),
                              "j$cond $target",
                             [(PCPUbrcc bb:$target, imm:$cond)]>;

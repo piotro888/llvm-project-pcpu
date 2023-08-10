@@ -739,13 +739,6 @@ MachineBasicBlock* PCPUTargetLowering::expandSelectCC(MachineInstr &MI, MachineB
     .addMBB(SinkMBB)
     .addImm(CC);
 
-  // XXX: WORKAROUND, for bug when ThisMBB got reorderd and not contained
-  // jump to IfFalseMBB (only JCOND). This is not optimal, as may insert
-  // unnedded jumps, but makes using optimization flags at least possible, so it is better.
-  // Maybe find what causes that behaviour in future.
-  BuildMI(ThisMBB, dl, TII.get(PCPU::JMP))
-    .addMBB(IfFalseMBB);
-
   // IfFalseMBB just falls through to SinkMBB.
   IfFalseMBB->addSuccessor(SinkMBB);
 
