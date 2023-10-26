@@ -1,3 +1,30 @@
+# LLVM port for PCPU and piOS
+
+LLVM project with backend for [pcpu processor](https://github.com/piotro888/ppcpu) and target for [piOS operating system](https://github.com/piotro888/piOS)
+
+### Recommended build command
+
+```bash
+git clone https://github.com/piotro888/llvm-project-pcpu.git llvm-project
+cd llvm-project; mkdir rbuild; cd rbuild
+
+cmake -G Ninja -DCMAKE_BUILD_TYPE="Release" -DLLVM_ENABLE_PROJECTS="clang;lld" -DLLVM_PARALLEL_LINK_JOBS=1 -DLLVM_TARGETS_TO_BUILD="" -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD="PCPU" -DLLVM_USE_LINKER="gold" -DLLVM_ENABLE_ASSERTIONS=True ../llvm
+
+ninja -j ${nproc}
+```
+
+### Compiling with piOS libraries
+
+`~/llvm-project/rbuild/bin/clang -target pcpu-unknown-pios-elf --sysroot ~/piOS/compile_base -v main.c -o main`
+
+For "bare bones" configuration and other use cases you can see Makefiles in [piOS](https://github.com/piotro888/piOS)
+
+This is a main toolchain for PCPU processor and is now a fully functional and tested compiler (with few minor bugs and missing features) on running a piOS project.
+
+Ported projects: llvm, clang, lld
+
+----
+
 # The LLVM Compiler Infrastructure
 
 This directory and its sub-directories contain the source code for LLVM,
