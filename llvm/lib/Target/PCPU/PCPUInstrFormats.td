@@ -25,18 +25,15 @@ class PCPUInst<dag outs, dag ins, string asmstr, list<dag> pattern>
 // Format RRRI instruction class in PCPU : <|imm|rs2|rs1|rd|opcode|>
 //===----------------------------------------------------------------------===//
 
-class PCPUFrri<bits<7> op, dag outs, dag ins, string asmstr, list<dag> pattern>: 
+class PCPUFrx<bits<7> op, dag outs, dag ins, string asmstr, list<dag> pattern>: 
   PCPUInst<outs, ins, asmstr, pattern>
 {
-  bits<3>  rd;
-  bits<3>  rs1;
-  bits<3>  rs2;
-  bits<16> imm;
+  bits<4>  rd;
+  bits<4>  rs1;
 
-  let Inst{31-16}  = imm;
-  let Inst{15-13}  = rs2;
-  let Inst{12-10}  = rs1;
-  let Inst{9-7}    = rd;
+  let Inst{15} = 0;
+  let Inst{14-11}  = rs1;
+  let Inst{10-7}   = rd;
   let Inst{6-0}    = op;
 }
 
@@ -45,29 +42,30 @@ class PCPUFrri<bits<7> op, dag outs, dag ins, string asmstr, list<dag> pattern>:
 //===----------------------------------------------------------------------===//
 
 class PCPUFrr<bits<7> op, dag outs, dag ins, string asmstr, list<dag> pattern>: 
-  PCPUFrri<op, outs, ins, asmstr, pattern>
+  PCPUFrx<op, outs, ins, asmstr, pattern>
 {
-  let imm=0; // check if this is valid
-}
-
-class PCPUFr1<bits<7> op, dag outs, dag ins, string asmstr, list<dag> pattern>: 
-  PCPUFrri<op, outs, ins, asmstr, pattern>
-{
-  let imm=0;
-  let rs2=0;
+  bits<4> rs2;
+  let Inst{19-16} = rs2;
+  let Inst{31-20} = 0;
 }
 
 class PCPUFri<bits<7> op, dag outs, dag ins, string asmstr, list<dag> pattern>: 
-  PCPUFrri<op, outs, ins, asmstr, pattern>
+  PCPUFrx<op, outs, ins, asmstr, pattern>
+{
+  bits<16> imm;
+  let Inst{31-16} = imm;
+}
+
+class PCPUFr1<bits<7> op, dag outs, dag ins, string asmstr, list<dag> pattern>: 
+  PCPUFrr<op, outs, ins, asmstr, pattern>
 {
   let rs2=0;
 }
 
 class PCPUFi<bits<7> op, dag outs, dag ins, string asmstr, list<dag> pattern>: 
-  PCPUFrri<op, outs, ins, asmstr, pattern>
+  PCPUFri<op, outs, ins, asmstr, pattern>
 {
   let rs1=0;
-  let rs2=0;
 }
 
 //===----------------------------------------------------------------------===//
@@ -87,11 +85,10 @@ class PCPUFJMPCC<bits<7> op, dag outs, dag ins, string asmstr, list<dag> pattern
 }
 
 class PCPUNul<bits<7> op, dag outs, dag ins, string asmstr, list<dag> pattern>: 
-  PCPUFrri<op, outs, ins, asmstr, pattern>
+  PCPUFrr<op, outs, ins, asmstr, pattern>
 {
     // for testing only
 
-  let imm=0;
   let rs1=0;
   let rs2=0;
   let rd=0;

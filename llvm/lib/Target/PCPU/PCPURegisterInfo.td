@@ -22,7 +22,7 @@ let Namespace = "PCPU" in {
 }
 
 // Integer registers
-foreach i = 0-7 in {
+foreach i = 0-15 in {
   def R#i : PCPUReg<i, "r"#i>, DwarfRegNum<[i]>;
 }
 
@@ -39,6 +39,7 @@ let SubRegIndices = [sub_16] in {
 def GPR : RegisterClass<"PCPU", [i16], 16,
     (add
      R1, R2, R3, R0, RV, R4,  // GPR
+     R8, R9, R10, R11, R12, R13, R14, R15, // GPR set2
      R6,  RCA,  // return value
      R5,  FP,  // frame pointer
      R7,  SP  // stack pointer

@@ -54,6 +54,22 @@ static inline unsigned getPCPURegisterNumbering(unsigned Reg) {
   case PCPU::SP:
   case PCPU::R7:
     return 7;
+  case PCPU::R8:
+    return 8;
+  case PCPU::R9:
+    return 9;
+  case PCPU::R10:
+    return 10;
+  case PCPU::R11:
+    return 11;
+  case PCPU::R12:
+    return 12;
+  case PCPU::R13:
+    return 13;
+  case PCPU::R14:
+    return 14;
+  case PCPU::R15:
+    return 15;
   default:
     llvm_unreachable("Unknown register number!");
   }

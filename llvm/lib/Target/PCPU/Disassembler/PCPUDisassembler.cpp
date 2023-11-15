@@ -93,12 +93,13 @@ PCPUDisassembler::getInstruction(MCInst &Instr, uint64_t &Size,
 
 static const unsigned GPRDecoderTable[] = {
     PCPU::R0,  PCPU::R1,  PCPU::R2,  PCPU::R3,  PCPU::R4,  PCPU::R5,
-    PCPU::R6,  PCPU::R7};
+    PCPU::R6,  PCPU::R7,  PCPU::R8,  PCPU::R9,  PCPU::R10, PCPU::R11,
+    PCPU::R12, PCPU::R13, PCPU::R14, PCPU::R15};
 
 DecodeStatus DecodeGPRRegisterClass(MCInst &Inst, unsigned RegNo,
                                     uint64_t /*Address*/,
                                     const MCDisassembler * /*Decoder*/) {
-  if (RegNo > 7)
+  if (RegNo > 15)
     return MCDisassembler::Fail;
 
   unsigned Reg = GPRDecoderTable[RegNo];

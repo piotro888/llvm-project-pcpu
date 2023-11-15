@@ -86,14 +86,13 @@ def LDI : PCPUFi<0b0000100,
 
 
 class StoreOP <bits<7> op, dag ins, string asmstr, list<dag> pattern> :
-  PCPUFrri<op, (outs), ins, asmstr, pattern> {
-    let rd = 0;
+  PCPUFri<op, (outs), ins, asmstr, pattern> {
+    // in store with offset instructions $rd is used as offset to simplify encoding (before $rs2)
     let mayStore = 1;
 }
 
 class LoadOP <bits<7> op, dag outs, dag ins, string asmstr, list<dag> pattern> :
-  PCPUFrri<op, outs, ins, asmstr, pattern> {
-    let rs2 = 0;
+  PCPUFri<op, outs, ins, asmstr, pattern> {
     let mayLoad = 1;
     let canFoldAsLoad = 1;
 }
@@ -102,17 +101,17 @@ def STD: StoreOP<0b0000101,
   (ins GPR: $rs1, i16imm: $imm),
   "std $rs1, $imm",
   [(store i16 : $rs1, imm : $imm)]> {
-    let rs2 = 0;
+    let rd = 0;
 }
 
 def STO: StoreOP<0b0000110,
-  (ins GPR: $rs1, GPR: $rs2, i16imm: $imm),
-  "sto $rs1, $rs2, $imm",
-  [(store i16 : $rs1, (add i16 : $rs2, imm : $imm))]>;
+  (ins GPR: $rs1, GPR: $rd, i16imm: $imm),
+  "sto $rs1, $rd, $imm",
+  [(store i16 : $rs1, (add i16 : $rd, imm : $imm))]>;
 
 // (store [reg]) -> (store [reg]+0)
-def : Pat<(store i16:$rs1, i16:$rs2),
-          (STO i16:$rs1, i16:$rs2, (i16 0))>;
+def : Pat<(store i16:$rs1, i16:$rd),
+          (STO i16:$rs1, i16:$rd, (i16 0))>;
 
 let isReMaterializable=1 in {
     def LDD : LoadOP<0b0000010,
@@ -139,17 +138,17 @@ def SD8: StoreOP<0b0100001,
   (ins GPR: $rs1, i16imm: $imm),
   "sd8 $rs1, $imm",
   [(truncstorei8 i16 : $rs1, imm : $imm)]> {
-    let rs2 = 0;
+    let rd = 0;
 }
 
 def SO8: StoreOP<0b0100010,
-  (ins GPR: $rs1, GPR: $rs2, i16imm: $imm),
-  "so8 $rs1, $rs2, $imm",
-  [(truncstorei8 i16 : $rs1, (add i16 : $rs2, imm : $imm))]>;
+  (ins GPR: $rs1, GPR: $rd, i16imm: $imm),
+  "so8 $rs1, $rd, $imm",
+  [(truncstorei8 i16 : $rs1, (add i16 : $rd, imm : $imm))]>;
 
 // (store [reg]) -> (store [reg]+0)
-def : Pat<(truncstorei8 i16:$rs1, i16:$rs2),
-          (SO8 i16:$rs1, i16:$rs2, (i16 0))>;
+def : Pat<(truncstorei8 i16:$rs1, i16:$rd),
+          (SO8 i16:$rs1, i16:$rd, (i16 0))>;
 
 let isReMaterializable = 1 in {
     def LD8 : LoadOP<0b0011111,
