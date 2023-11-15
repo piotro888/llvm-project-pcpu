@@ -375,6 +375,15 @@ let hasNoSchedulingInfo = 1, hasSideEffects = 1, mayLoad = 0, mayStore = 0 in {
     > {let rd=0;}
 }
 
+def WFI :
+  PCPUFri<0b0101101,
+      (outs), (ins),
+      "wfi",[]> {
+  let rd = 0;
+  let rs1 = 0;
+  let imm = 0;
+}
+
 //===----------------------------------------------------------------------===//
 // CMP instructions
 //===----------------------------------------------------------------------===//
@@ -393,6 +402,13 @@ let rd = 0, Defs = [FREG], isCompare = 1 in {
               "cmi $rs1, $imm",
               [(PCPUcmp i16:$rs1, (i16 imm:$imm))]
   >;
+
+  def CAI: PCPUFri<0b0011011,
+              (outs),
+              (ins GPR: $rs1, i16imm: $imm),
+              "cai $rs1, $imm",
+              []
+  >; // TODO: Use in generated code?
 }
 
 let Uses = [FREG], usesCustomInserter = 1 in {
